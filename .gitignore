@@ -194,3 +194,10 @@ img/5793f438cc387cb109190a17a233df6fbcd3690ef0286f81143759fb86378cca.png
 img/45687fba4003650d2c730416aecab82da55d01f2dd07ec5a60873acafdc83b1b.jpg
 img/d623164e30227e3c51d655f73221ca941cb24b0bb9954736ebaddba5a2e30553.jpg
 img/ff841d9a2ad56d86bb5ab4b1be5430605397845583269fcbb2826401d68a1567.png
+target/classes/my/poo/mtgcrawl/mtgprint/resource/PdfController.class
+target/classes/my/poo/mtgcrawl/mtgprint/service/pdf/DocumentGenerator.class
+target/classes/my/poo/mtgcrawl/mtgprint/service/pdf/PDFGenerationService.class
+target/classes/my/poo/mtgcrawl/mtgprint/resource/PdfController.class
+target/classes/my/poo/mtgcrawl/mtgprint/service/pdf/DocumentGenerator.class
+target/classes/my/poo/mtgcrawl/mtgprint/resource/PdfController.class
+target/classes/my/poo/mtgcrawl/mtgprint/service/pdf/DocumentGenerator.class
