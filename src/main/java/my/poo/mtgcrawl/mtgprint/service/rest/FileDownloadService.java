@@ -18,7 +18,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class FileDownloadService {
     private final RestTemplate restTemplate;
     private static final String IMG_FOLDER = "img/";
@@ -39,11 +42,11 @@ public class FileDownloadService {
                 .findFirst();
     
             if (existingFile.isPresent()) {
-                System.out.println("File already exists: " + existingFile.get());
+                log.debug("File already exists: " + existingFile.get());
                 return existingFile.get().toString();
             }
         } catch (IOException e) {
-            System.err.println("Error checking for existing file: " + e.getMessage());
+            log.error("Error checking for existing file: " + e.getMessage(), e);
         }
     
         // Wenn die Datei nicht existiert, fahren Sie mit dem Download fort
@@ -67,15 +70,14 @@ public class FileDownloadService {
     
                 Files.createDirectories(filePath.getParent());
                 Files.write(filePath, fileContent);
-                System.out.println("File downloaded successfully: " + fullFileName);
+                log.debug("File downloaded successfully: " + fullFileName);
                 return fullFileName;
             } catch (Exception e) {
-                System.err.println("Error writing file: " + e.getMessage());
-                e.printStackTrace();
+                log.error("Error writing file: " + e.getMessage(), e);
                 return null;
             }
         } else {
-            System.out.println("Failed to download file. Status code: " + response.getStatusCode());
+            log.error("Failed to download file. Status code: " + response.getStatusCode());
             return null;
         }
     }
@@ -84,7 +86,7 @@ public class FileDownloadService {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
         HttpEntity<String> entity = new HttpEntity<>(headers);
-    
+
         ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
     
         if (response.getStatusCode().is3xxRedirection()) {

@@ -1,4 +1,4 @@
-package my.poo.mtgcrawl.mtgprint.service.latex;
+package my.poo.mtgcrawl.mtgprint.service.pdf;
 
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -16,7 +16,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 @Service
-public class LatexDocumentGenerator {
+public class DocumentGenerator {
 
     public static final String TEMP_PATH = "tmp";
 
@@ -52,7 +52,9 @@ public class LatexDocumentGenerator {
 
             for (String imagePath : imagePaths) {
                 if (cardCount >= cardsPerRow * cardsPerColumn) {
-                    drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight);
+                    if (properties.isCutlines()) {
+                        drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor());
+                    }
                     contentStream.close();
                     page = new PDPage(pageSize);
                     document.addPage(page);
@@ -73,6 +75,10 @@ public class LatexDocumentGenerator {
                 PDImageXObject image = PDImageXObject.createFromFile(imagePath, document);
                 contentStream.drawImage(image, x, y, cardWidth, cardHeight);
 
+                if (properties.isCorners()) {
+                    drawCorners(contentStream, x, y, cardWidth, cardHeight, properties.getCornerColor());
+                }
+
                 // Add grid lines for this card
                 verticalLines.add(x);
                 verticalLines.add(x + cardWidth);
@@ -82,7 +88,9 @@ public class LatexDocumentGenerator {
                 cardCount++;
             }
 
-            drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight);
+            if (properties.isCutlines()) {
+                drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor());
+            }
             contentStream.close();
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -92,9 +100,9 @@ public class LatexDocumentGenerator {
     }
 
     private void drawGridLines(PDPageContentStream contentStream, List<Float> verticalLines,
-            List<Float> horizontalLines,
-            float gridMargin, float pageWidth, float pageHeight) throws IOException {
-        contentStream.setStrokingColor(Color.LIGHT_GRAY);
+                               List<Float> horizontalLines, float gridMargin, float pageWidth, float pageHeight, String colorHex) throws IOException {
+        Color color = Color.decode(colorHex);
+        contentStream.setStrokingColor(color);
 
         // Sort and remove duplicates
         verticalLines = new ArrayList<>(new TreeSet<>(verticalLines));
@@ -121,42 +129,62 @@ public class LatexDocumentGenerator {
         }
     }
 
-    // private String compileTex(String texFilePath) throws IOException,
-    // InterruptedException {
-    // File texFile = new File(texFilePath);
-    // String absoluteTexFilePath = texFile.getAbsolutePath();
+    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height, String colorHex) throws IOException {
+        Color color = Color.decode(colorHex);
+        contentStream.setStrokingColor(color);
 
-    // ProcessBuilder processBuilder = new ProcessBuilder("pdflatex",
-    // "-interaction=nonstopmode", "-shell-escape", absoluteTexFilePath);
-    // processBuilder.directory(new File(texFilePath).getParentFile());
-    // processBuilder.redirectErrorStream(true);
-    // processBuilder.inheritIO();
-    // Process process = processBuilder.start();
+        float cornerRadius = height * 0.05f; // Radius der abgerundeten Ecke
 
-    // // Wait for the process to complete with a timeout
-    // boolean completed = process.waitFor(60 * 10, TimeUnit.SECONDS);
+        // Top-left corner
+        drawRoundedCorner(contentStream, x, y + height, cornerRadius, 0);
 
-    // if (!completed) {
-    // process.destroy();
-    // throw new RuntimeException("pdflatex process timed out");
-    // }
+        // Top-right corner
+        drawRoundedCorner(contentStream, x + width, y + height, cornerRadius, 1);
 
-    // int exitCode = process.exitValue();
-    // if (exitCode != 0 && exitCode != 1) {
-    // throw new RuntimeException("pdflatex process exited with code " + exitCode);
-    // }
-    // System.out.println("PDF successfully generated.");
-    // return texFilePath.replaceAll("\\.tex$", ".pdf");
-    // }
+        // Bottom-left corner
+        drawRoundedCorner(contentStream, x, y, cornerRadius, 2);
 
-    // private void cleanupTempFiles(String dirPath) {
-    // try {
-    // Files.walk(Paths.get(dirPath))
-    // .sorted(java.util.Comparator.reverseOrder())
-    // .map(java.nio.file.Path::toFile)
-    // .forEach(File::delete);
-    // } catch (IOException e) {
-    // e.printStackTrace();
-    // }
-    // }
+        // Bottom-right corner
+        drawRoundedCorner(contentStream, x + width, y, cornerRadius, 3);
+    }
+
+    private void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius, int quadrant) throws IOException {
+        float startAngle, endAngle;
+
+        switch (quadrant) {
+            case 0: // Top-left
+                startAngle = 0;
+                endAngle = 90;
+                break;
+            case 1: // Top-right
+                startAngle = 90;
+                endAngle = 180;
+                break;
+            case 2: // Bottom-left
+                startAngle = 270;
+                endAngle = 360;
+                break;
+            case 3: // Bottom-right
+                startAngle = 180;
+                endAngle = 270;
+                break;
+            default:
+                throw new IllegalArgumentException("Invalid quadrant");
+        }
+
+        float x1 = (float) (cornerX + radius * Math.cos(Math.toRadians(startAngle)));
+        float y1 = (float) (cornerY + radius * Math.sin(Math.toRadians(startAngle)));
+        float x2 = (float) (cornerX + radius * Math.cos(Math.toRadians(endAngle)));
+        float y2 = (float) (cornerY + radius * Math.sin(Math.toRadians(endAngle)));
+
+        contentStream.moveTo(cornerX, cornerY);
+        contentStream.lineTo(x1, y1);
+        contentStream.curveTo(
+            (float) (cornerX + radius * Math.cos(Math.toRadians(startAngle + 30))),
+            (float) (cornerY + radius * Math.sin(Math.toRadians(startAngle + 30))),
+            (float) (cornerX + radius * Math.cos(Math.toRadians(endAngle - 30))),
+            (float) (cornerY + radius * Math.sin(Math.toRadians(endAngle - 30))),
+            x2, y2
+        );
+    }
 }

@@ -1,4 +1,4 @@
-package my.poo.mtgcrawl.mtgprint.service.latex;
+package my.poo.mtgcrawl.mtgprint.service.pdf;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -16,13 +16,13 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Service
-public class LibTexService {
+public class PDFGenerationService {
 
-    private final LatexDocumentGenerator latexDocumentGenerator;
+    private final DocumentGenerator latexDocumentGenerator;
     private final FileDownloadService fileDownloadService;
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    public LibTexService(LatexDocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService) {
+    public PDFGenerationService(DocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService) {
         this.latexDocumentGenerator = latexDocumentGenerator;
         this.fileDownloadService = fileDownloadService;
     }
@@ -92,7 +92,7 @@ public class LibTexService {
     }
 
     public void clearFiles(String progressId) {
-        File f = new File(LatexDocumentGenerator.TEMP_PATH  +"/"+ progressId+ "/");
+        File f = new File(DocumentGenerator.TEMP_PATH  +"/"+ progressId+ "/");
         if(f.isDirectory()){
             f.delete();
         }

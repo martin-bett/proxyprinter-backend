@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.CreatePdfDto;
-import my.poo.mtgcrawl.mtgprint.service.latex.LibTexService;
+import my.poo.mtgcrawl.mtgprint.service.pdf.PDFGenerationService;
 
 import java.util.Map;
 import java.util.UUID;
@@ -19,10 +19,10 @@ import java.util.concurrent.CompletableFuture;
 @RequestMapping("/api")
 public class PdfController {
 
-    private final LibTexService libTexService;
+    private final PDFGenerationService libTexService;
     private final Map<String, byte[]> pdfCache = new ConcurrentHashMap<>();
 
-    public PdfController(LibTexService libTexService) {
+    public PdfController(PDFGenerationService libTexService) {
         this.libTexService = libTexService;
     }
 

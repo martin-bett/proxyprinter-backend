@@ -9,6 +9,7 @@ public class PdfProperties {
     private Integer hmargin;
     private Integer vmargin;
     private boolean cutlines;
+    private String cutlineColor;
     private boolean corners;
     private String cornerColor;
 }
