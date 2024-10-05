@@ -11,5 +11,6 @@ public class PdfProperties {
     private boolean cutlines;
     private String cutlineColor;
     private boolean corners;
+    private boolean cornerColorAuto;
     private String cornerColor;
 }

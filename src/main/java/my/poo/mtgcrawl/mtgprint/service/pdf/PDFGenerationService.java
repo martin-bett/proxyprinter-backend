@@ -3,13 +3,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.CreatePdfDto;
+import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
+import my.poo.mtgcrawl.mtgprint.service.rest.FileUploadService;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,23 +19,35 @@ public class PDFGenerationService {
 
     private final DocumentGenerator latexDocumentGenerator;
     private final FileDownloadService fileDownloadService;
+    private final HashService hashService;
     private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
 
-    public PDFGenerationService(DocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService) {
+    public PDFGenerationService(DocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService, HashService hashService) {
         this.latexDocumentGenerator = latexDocumentGenerator;
         this.fileDownloadService = fileDownloadService;
+        this.hashService = hashService;
     }
     public byte[] generateDocument(CreatePdfDto request, String progressId) throws Exception {
         try {
             List<String> downloadedFileNames = new ArrayList<>();
             int totalFiles = request.getImageUrls().size();
-            
+            sendProgress(progressId, "Starting Download of "+totalFiles+" Files");
             for (int i = 0; i < totalFiles; i++) {
                 String url = request.getImageUrls().get(i);
                 if(url != null){
-                    String fileName = fileDownloadService.downloadFile(url, curFileName(url));
-                    downloadedFileNames.add(fileName);
-                    sendProgress(progressId, "Downloaded file " + (i + 1) + " of " + totalFiles);
+                    if(url.startsWith("http://localhost:8080/api/files/download/")){
+                        downloadedFileNames.add(FileUploadService.IMG_TEMP_FOLDER + url.replace("http://localhost:8080/api/files/download/", ""));  
+                        sendProgress(progressId, "Added Uploaded file " + (i + 1) + " of " + totalFiles);
+                    } else {
+                        try {
+                            String fileName = fileDownloadService.downloadFile(url, hashService.curFileName(url));
+                            downloadedFileNames.add(fileName);
+                            sendProgress(progressId, "Downloaded file " + (i + 1) + " of " + totalFiles);
+                        } catch (Exception e) {
+                            
+                        }
+
+                    }
                 }
             }
             
@@ -53,24 +64,7 @@ public class PDFGenerationService {
         }
     }
 
-   private String curFileName(String url) {
-        if(url == null) return null;
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] encodedHash = digest.digest(url.getBytes(StandardCharsets.UTF_8));
-            
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : encodedHash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) hexString.append('0');
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (NoSuchAlgorithmException e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
+
 
     public SseEmitter createSseEmitter(String id) {
         SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);

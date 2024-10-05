@@ -24,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FileDownloadService {
     private final RestTemplate restTemplate;
-    private static final String IMG_FOLDER = "img/";
+    private static final String IMG_CACHE_FOLDER = "img/cache/";
     private final Tika tika = new Tika();
 
     public FileDownloadService(RestTemplate r) {
@@ -35,7 +35,7 @@ public class FileDownloadService {
         if (fileName == null) return null;
     
         // Suche zuerst nach der Datei ohne Erweiterung
-        Path baseFilePath = Paths.get(IMG_FOLDER + fileName);
+        Path baseFilePath = Paths.get(IMG_CACHE_FOLDER + fileName);
         try {
             Optional<Path> existingFile = Files.list(baseFilePath.getParent())
                 .filter(path -> path.getFileName().toString().startsWith(fileName + "."))
@@ -65,7 +65,7 @@ public class FileDownloadService {
                 String extension = MimeTypes.getDefaultMimeTypes().forName(mimeType).getExtension();
     
                 // Create file name with correct extension
-                String fullFileName = IMG_FOLDER + fileName + extension;
+                String fullFileName = IMG_CACHE_FOLDER + fileName + extension;
                 Path filePath = Paths.get(fullFileName);
     
                 Files.createDirectories(filePath.getParent());

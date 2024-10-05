@@ -94,6 +94,34 @@
     <artifactId>commons-io</artifactId>
     <version>2.16.1</version>
 </dependency>
+<!-- TwelveMonkeys ImageIO Core -->
+<dependency>
+	<groupId>com.twelvemonkeys.imageio</groupId>
+	<artifactId>imageio-core</artifactId>
+	<version>3.9.4</version>
+</dependency>
+
+<!-- TwelveMonkeys ImageIO JPEG Plugin -->
+<dependency>
+	<groupId>com.twelvemonkeys.imageio</groupId>
+	<artifactId>imageio-jpeg</artifactId>
+	<version>3.9.4</version>
+</dependency>
+
+<!-- TwelveMonkeys ImageIO TIFF Plugin -->
+<dependency>
+	<groupId>com.twelvemonkeys.imageio</groupId>
+	<artifactId>imageio-tiff</artifactId>
+	<version>3.9.4</version>
+</dependency>
+
+<!-- TwelveMonkeys ImageIO WebP Plugin -->
+<dependency>
+	<groupId>com.twelvemonkeys.imageio</groupId>
+	<artifactId>imageio-webp</artifactId>
+	<version>3.9.4</version>
+</dependency>
+
 
  </dependencies>
 

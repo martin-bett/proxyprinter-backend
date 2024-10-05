@@ -11,12 +11,21 @@ import my.poo.mtgcrawl.mtgprint.entitiy.PdfProperties;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
+
+import javax.imageio.ImageIO;
+
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 
 @Service
 public class DocumentGenerator {
+
+    public DocumentGenerator(){
+        ImageIO.scanForPlugins();
+    }
 
     public static final String TEMP_PATH = "tmp";
 
@@ -72,11 +81,18 @@ public class DocumentGenerator {
                 float x = startX + col * (cardWidth + hMargin);
                 float y = startY - row * (cardHeight + vMargin);
 
-                PDImageXObject image = PDImageXObject.createFromFile(imagePath, document);
+                PDImageXObject image = createImageForPDF(imagePath, document);
+                
                 contentStream.drawImage(image, x, y, cardWidth, cardHeight);
 
                 if (properties.isCorners()) {
-                    drawCorners(contentStream, x, y, cardWidth, cardHeight, properties.getCornerColor());
+                    Color c;
+                    if(properties.isCornerColorAuto()){
+                        c = getBorderColor(image.getImage());
+                    } else {
+                        c = Color.decode(properties.getCornerColor());
+                    }
+                    drawCorners(contentStream, x, y, cardWidth, cardHeight,  c);
                 }
 
                 // Add grid lines for this card
@@ -99,10 +115,64 @@ public class DocumentGenerator {
         }
     }
 
+    public static PDImageXObject createImageForPDF(String imagePath, PDDocument document) throws IOException {
+        try {
+            // Versuche zuerst, das Bild direkt mit PDFBox zu laden
+            return PDImageXObject.createFromFile(imagePath, document);
+        } catch (Exception e) {
+            // Wenn das fehlschlägt, versuche es mit ImageIO
+            BufferedImage bufferedImage = ImageIO.read(new File(imagePath));
+            if (bufferedImage == null) {
+                throw new IOException("Bildformat wird nicht unterstützt: " + imagePath);
+            }
+            
+            // Konvertiere BufferedImage zu byte array
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(bufferedImage, "png", baos);
+            byte[] imageData = baos.toByteArray();
+            
+            // Erstelle PDImageXObject aus dem byte array
+            return PDImageXObject.createFromByteArray(document, imageData, "image");
+        }
+    }
+
+    private static final int OFFSET = 1; // Pixel-Offset vom Rand
+
+    public static Color getBorderColor(BufferedImage img) {
+        int w = img.getWidth();
+        int h = img.getHeight();
+
+        // Farben an den vier Seiten sammeln
+        Color[] colors = new Color[4];
+        colors[0] = new Color(img.getRGB(w / 2, OFFSET)); // Oben
+        colors[1] = new Color(img.getRGB(w / 2, h - 1 - OFFSET)); // Unten
+        colors[2] = new Color(img.getRGB(OFFSET, h / 2)); // Links
+        colors[3] = new Color(img.getRGB(w - 1 - OFFSET, h / 2)); // Rechts
+
+        return getAverageColor(colors);
+    }
+
+    private static Color getAverageColor(Color[] colors) {
+        int redSum = 0, greenSum = 0, blueSum = 0;
+        
+        for (Color color : colors) {
+            redSum += color.getRed();
+            greenSum += color.getGreen();
+            blueSum += color.getBlue();
+        }
+        
+        int redAvg = redSum / colors.length;
+        int greenAvg = greenSum / colors.length;
+        int blueAvg = blueSum / colors.length;
+        
+        return new Color(redAvg, greenAvg, blueAvg);
+    }
+
     private void drawGridLines(PDPageContentStream contentStream, List<Float> verticalLines,
                                List<Float> horizontalLines, float gridMargin, float pageWidth, float pageHeight, String colorHex) throws IOException {
         Color color = Color.decode(colorHex);
         contentStream.setStrokingColor(color);
+        contentStream.setLineWidth(0.1f);
 
         // Sort and remove duplicates
         verticalLines = new ArrayList<>(new TreeSet<>(verticalLines));
@@ -129,11 +199,11 @@ public class DocumentGenerator {
         }
     }
 
-    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height, String colorHex) throws IOException {
-        Color color = Color.decode(colorHex);
-        contentStream.setStrokingColor(color);
+    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height, Color color) throws IOException {
+        
+        contentStream.setNonStrokingColor(color);
 
-        float cornerRadius = height * 0.05f; // Radius der abgerundeten Ecke
+        float cornerRadius = height * 0.03f; // Radius der abgerundeten Ecke
 
         // Top-left corner
         drawRoundedCorner(contentStream, x, y + height, cornerRadius, 0);
@@ -150,41 +220,57 @@ public class DocumentGenerator {
 
     private void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius, int quadrant) throws IOException {
         float startAngle, endAngle;
-
+        boolean leftSide, bottomSide;
+        float x1, x2, y1, y2;
+        y1 = cornerY;
+        x2 = cornerX;
         switch (quadrant) {
             case 0: // Top-left
-                startAngle = 0;
-                endAngle = 90;
-                break;
-            case 1: // Top-right
+                leftSide = true;
+                bottomSide = false;
+                x1 = cornerX + radius;
+                y2 = cornerY - radius;
                 startAngle = 90;
                 endAngle = 180;
                 break;
-            case 2: // Bottom-left
-                startAngle = 270;
-                endAngle = 360;
+            case 1: // Top-right
+                bottomSide = false;
+                leftSide = false;
+                x1 = cornerX - radius;
+                y2 = cornerY - radius;
+                startAngle = 00;
+                endAngle = 90;
                 break;
-            case 3: // Bottom-right
+            case 2: // Bottom-left
+                bottomSide = true;
+                leftSide = true;
+                x1 = cornerX + radius;
+                y2 = cornerY + radius;
                 startAngle = 180;
                 endAngle = 270;
+                break;
+            case 3: // Bottom-right
+                leftSide = false;
+                bottomSide = true;
+                x1 = cornerX - radius;
+                y2 = cornerY + radius;
+                startAngle = 270;
+                endAngle = 360;
                 break;
             default:
                 throw new IllegalArgumentException("Invalid quadrant");
         }
 
-        float x1 = (float) (cornerX + radius * Math.cos(Math.toRadians(startAngle)));
-        float y1 = (float) (cornerY + radius * Math.sin(Math.toRadians(startAngle)));
-        float x2 = (float) (cornerX + radius * Math.cos(Math.toRadians(endAngle)));
-        float y2 = (float) (cornerY + radius * Math.sin(Math.toRadians(endAngle)));
-
         contentStream.moveTo(cornerX, cornerY);
         contentStream.lineTo(x1, y1);
         contentStream.curveTo(
-            (float) (cornerX + radius * Math.cos(Math.toRadians(startAngle + 30))),
-            (float) (cornerY + radius * Math.sin(Math.toRadians(startAngle + 30))),
-            (float) (cornerX + radius * Math.cos(Math.toRadians(endAngle - 30))),
-            (float) (cornerY + radius * Math.sin(Math.toRadians(endAngle - 30))),
+            (float) (cornerX + (leftSide ? 1 : -1) * radius +  radius * Math.cos(Math.toRadians(startAngle + 35))),
+            (float) (cornerY + (bottomSide ? 1 : -1) * radius +  radius * Math.sin(Math.toRadians(startAngle + 35))),
+            (float) (cornerX + (leftSide ? 1 : -1) * radius +  radius * Math.cos(Math.toRadians(endAngle - 35))),
+            (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius* Math.sin(Math.toRadians(endAngle - 35))),
             x2, y2
         );
+        contentStream.closePath();
+        contentStream.fill();
     }
 }
