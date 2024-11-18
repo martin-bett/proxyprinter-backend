@@ -18,6 +18,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @Slf4j
@@ -29,6 +32,12 @@ public class ProxyController {
     public ProxyController(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
+
+    @GetMapping("/ping")
+    public Boolean ping() {
+        return true;
+    }
+    
 
     @PostMapping
     public ResponseEntity<String> proxyRequest(
@@ -68,9 +77,9 @@ public class ProxyController {
     
                 HttpEntity<MultiValueMap<String, HttpEntity<?>>> requestEntity1 = new HttpEntity<>(multipartBody, headers);
     
-                System.out.println("Request URL: " + targetUrl);
-                System.out.println("Request Headers: " + headers);
-                System.out.println("Request Body Parts: " + multipartBody.keySet());
+                log.debug("Request URL: " + targetUrl);
+                log.debug("Request Headers: " + headers);
+                log.debug("Request Body Parts: " + multipartBody.keySet());
     
                 ResponseEntity<String> response = restTemplate.exchange(
                         targetUrl,

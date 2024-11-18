@@ -2,7 +2,7 @@ package my.poo.mtgcrawl.mtgprint.service.pdf;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import my.poo.mtgcrawl.mtgprint.entitiy.CreatePdfDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileUploadService;
@@ -35,8 +35,8 @@ public class PDFGenerationService {
             for (int i = 0; i < totalFiles; i++) {
                 String url = request.getImageUrls().get(i);
                 if(url != null){
-                    if(url.startsWith("http://localhost:8080/api/files/download/")){
-                        downloadedFileNames.add(FileUploadService.IMG_TEMP_FOLDER + url.replace("http://localhost:8080/api/files/download/", ""));  
+                    if(url.startsWith("/api/files/download/")){
+                        downloadedFileNames.add(FileUploadService.IMG_TEMP_FOLDER + url.replace("/api/files/download/", ""));  
                         sendProgress(progressId, "Added Uploaded file " + (i + 1) + " of " + totalFiles);
                     } else {
                         try {

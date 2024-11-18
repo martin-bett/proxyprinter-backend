@@ -8,10 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import my.poo.mtgcrawl.mtgprint.entitiy.FileUploadResult;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.FileUploadResult;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileUploadService;
-import my.poo.mtgcrawl.mtgprint.service.rest.FileWriteException;
-import my.poo.mtgcrawl.mtgprint.service.rest.WrongFormatException;
 
 import java.io.IOException;
 import java.nio.file.Files;

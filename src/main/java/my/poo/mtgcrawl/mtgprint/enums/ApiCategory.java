@@ -1,8 +1,17 @@
 package my.poo.mtgcrawl.mtgprint.enums;
 
 public enum ApiCategory {
-        MAGIC,
-        POKEMON,
+        MTG,
+        POKE,
         YUGIOH,
-        MISC
+        MISC;
+        public static ApiCategory byName(String name){
+                if(name== null) return null;
+                switch (name.toUpperCase()) {
+                        case "MTG":return MTG;
+                        case "POKE":return POKE;
+                        case "YUGIOH":return YUGIOH;
+                        default:return MISC;
+                }
+        }
 }

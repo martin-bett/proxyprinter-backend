@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import my.poo.mtgcrawl.mtgprint.entitiy.CreatePdfDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PDFGenerationService;
 
 import java.util.Map;

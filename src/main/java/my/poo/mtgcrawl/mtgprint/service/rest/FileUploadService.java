@@ -19,7 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import lombok.extern.slf4j.Slf4j;
-import my.poo.mtgcrawl.mtgprint.entitiy.FileUploadResult;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.FileUploadResult;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 
 @Service

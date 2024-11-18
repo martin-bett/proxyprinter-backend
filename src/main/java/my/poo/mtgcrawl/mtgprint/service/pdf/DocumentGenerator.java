@@ -6,7 +6,8 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Service;
-import my.poo.mtgcrawl.mtgprint.entitiy.PdfProperties;
+
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.PdfProperties;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -62,7 +63,7 @@ public class DocumentGenerator {
             for (String imagePath : imagePaths) {
                 if (cardCount >= cardsPerRow * cardsPerColumn) {
                     if (properties.isCutlines()) {
-                        drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor());
+                        drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor(), properties.getCutlineThickness());
                     }
                     contentStream.close();
                     page = new PDPage(pageSize);
@@ -105,7 +106,7 @@ public class DocumentGenerator {
             }
 
             if (properties.isCutlines()) {
-                drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor());
+                drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor(), properties.getCutlineThickness());
             }
             contentStream.close();
 
@@ -169,10 +170,10 @@ public class DocumentGenerator {
     }
 
     private void drawGridLines(PDPageContentStream contentStream, List<Float> verticalLines,
-                               List<Float> horizontalLines, float gridMargin, float pageWidth, float pageHeight, String colorHex) throws IOException {
+                               List<Float> horizontalLines, float gridMargin, float pageWidth, float pageHeight, String colorHex, Integer thickness) throws IOException {
         Color color = Color.decode(colorHex);
         contentStream.setStrokingColor(color);
-        contentStream.setLineWidth(0.1f);
+        contentStream.setLineWidth(((thickness != null ? thickness : 3) * 0.5f));
 
         // Sort and remove duplicates
         verticalLines = new ArrayList<>(new TreeSet<>(verticalLines));

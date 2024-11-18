@@ -12,12 +12,18 @@
 	<artifactId>mtgprint</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<packaging>war</packaging>
-	<name>mtgprint</name>
+	<name>proxymaster</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
 		<java.version>21</java.version>
 	</properties>
 	<dependencies>
+
+ 	<dependency>
+ 		<groupId>org.springframework.boot</groupId>
+ 		<artifactId>spring-boot-starter-actuator</artifactId>
+ 	</dependency>
+
 
 		<dependency>
 			<groupId>com.google.code.gson</groupId>
@@ -33,16 +39,16 @@
 		</dependency>
 
 		<dependency>
-			<groupId>io.magicthegathering</groupId>
-			<artifactId>javasdk</artifactId>
-			<version>0.0.18</version>
-		</dependency>
-
-		<dependency>
 			<groupId>org.apache.pdfbox</groupId>
 			<artifactId>pdfbox</artifactId>
 			<version>2.0.24</version>
 		</dependency>
+
+		<dependency>
+			<groupId>com.vladmihalcea</groupId>
+			<artifactId>hibernate-types-60</artifactId>
+			<version>2.21.1</version>
+	</dependency>
 
 		<dependency>
 			<groupId>org.apache.tika</groupId>
@@ -56,6 +62,16 @@
 			<version>1.0.2</version>
 		</dependency>
 		
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-data-jpa</artifactId>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.postgresql</groupId>
+			<artifactId>postgresql</artifactId>
+			<scope>runtime</scope>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -82,7 +98,19 @@
 			<scope>test</scope>
 		</dependency>
 
-	
+	<!-- Postgres Objects -->
+	<dependency>
+		<groupId>io.hypersistence</groupId>
+		<artifactId>hypersistence-utils-hibernate-60</artifactId>
+		<version>3.8.3</version>
+	</dependency>
+		<!-- Mapstruct -->
+		<dependency>
+			<groupId>org.mapstruct</groupId>
+			<artifactId>mapstruct</artifactId>
+			<version>1.4.1.Final</version>
+		</dependency>
+
    <dependency>
      <groupId>org.json</groupId>
      <artifactId>json</artifactId>
@@ -137,6 +165,38 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.8.1</version>
+				<configuration>
+					<source>21</source>
+					<target>21</target>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombok.version}</version>
+						</path>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok-mapstruct-binding</artifactId>
+							<version>0.2.0</version>
+						</path>
+						<path>
+							<groupId>org.mapstruct</groupId>
+							<artifactId>mapstruct-processor</artifactId>
+							<version>1.4.2.Final</version>
+						</path>
+					</annotationProcessorPaths>
+					<compilerArgs>
+						<compilerArg>-Amapstruct.verbose=true</compilerArg>
+						<compilerArg>
+							-Amapstruct.defaultComponentModel=spring
+						</compilerArg>
+					</compilerArgs>
 				</configuration>
 			</plugin>
 		</plugins>
