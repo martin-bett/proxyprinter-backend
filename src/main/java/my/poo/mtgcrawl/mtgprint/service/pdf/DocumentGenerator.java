@@ -7,6 +7,10 @@ import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.springframework.stereotype.Service;
 
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.CropSettingsDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.ImageDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.PdfProperties;
 
 import java.util.ArrayList;
@@ -16,21 +20,26 @@ import java.util.TreeSet;
 import javax.imageio.ImageIO;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 
 @Service
+@Slf4j
 public class DocumentGenerator {
 
-    public DocumentGenerator(){
+    private final BufferedImageCacheService bufferedImageCacheService;
+
+    public DocumentGenerator(BufferedImageCacheService bufferedImageCacheService) {
+        this.bufferedImageCacheService = bufferedImageCacheService;
         ImageIO.scanForPlugins();
     }
 
     public static final String TEMP_PATH = "tmp";
 
-    public byte[] generateDocument(List<String> imagePaths, PdfProperties properties) throws IOException {
+    public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDRectangle pageSize = PDRectangle.A4;
             float pageWidth = pageSize.getWidth();
@@ -60,10 +69,11 @@ public class DocumentGenerator {
 
             PDPageContentStream contentStream = new PDPageContentStream(document, page);
 
-            for (String imagePath : imagePaths) {
+            for (ImageDto imagePath : imagePaths) {
                 if (cardCount >= cardsPerRow * cardsPerColumn) {
                     if (properties.isCutlines()) {
-                        drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor(), properties.getCutlineThickness());
+                        drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight,
+                                properties.getCutlineColor(), properties.getCutlineThickness());
                     }
                     contentStream.close();
                     page = new PDPage(pageSize);
@@ -82,18 +92,18 @@ public class DocumentGenerator {
                 float x = startX + col * (cardWidth + hMargin);
                 float y = startY - row * (cardHeight + vMargin);
 
-                PDImageXObject image = createImageForPDF(imagePath, document);
-                
-                contentStream.drawImage(image, x, y, cardWidth, cardHeight);
+                PDImageXObject image = createImageForPDF(imagePath, document, properties);
 
+                contentStream.drawImage(image, x, y, cardWidth, cardHeight);
+                log.debug("added image"+ imagePath.getImageUrl());
                 if (properties.isCorners()) {
                     Color c;
-                    if(properties.isCornerColorAuto()){
+                    if (properties.isCornerColorAuto()) {
                         c = getBorderColor(image.getImage());
                     } else {
                         c = Color.decode(properties.getCornerColor());
                     }
-                    drawCorners(contentStream, x, y, cardWidth, cardHeight,  c);
+                    drawCorners(contentStream, x, y, cardWidth, cardHeight, c);
                 }
 
                 // Add grid lines for this card
@@ -106,35 +116,105 @@ public class DocumentGenerator {
             }
 
             if (properties.isCutlines()) {
-                drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight, properties.getCutlineColor(), properties.getCutlineThickness());
+                drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight,
+                        properties.getCutlineColor(), properties.getCutlineThickness());
             }
             contentStream.close();
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             document.save(baos);
-            return baos.toByteArray();
+            byte[] result = baos.toByteArray();
+            log.debug("finished document "+ result.length/1000 +" KB");
+            return result;
         }
     }
 
-    public static PDImageXObject createImageForPDF(String imagePath, PDDocument document) throws IOException {
-        try {
-            // Versuche zuerst, das Bild direkt mit PDFBox zu laden
-            return PDImageXObject.createFromFile(imagePath, document);
-        } catch (Exception e) {
-            // Wenn das fehlschlägt, versuche es mit ImageIO
-            BufferedImage bufferedImage = ImageIO.read(new File(imagePath));
-            if (bufferedImage == null) {
-                throw new IOException("Bildformat wird nicht unterstützt: " + imagePath);
+    public PDImageXObject createImageForPDF(ImageDto imagePath, PDDocument document, PdfProperties properties) throws IOException {
+        CropSettingsDto cropSettings = imagePath.getCropSettings();
+        BufferedImage bufferedImage;
+    
+        // Überprüfe den Cache nach dem Bild
+        bufferedImage = bufferedImageCacheService.getImage(imagePath.getImageUrl());
+        if (bufferedImage == null) {
+            try {
+                bufferedImage = ImageIO.read(new File(imagePath.getImageUrl()));
+                if (bufferedImage == null) {
+                    throw new IOException("Bildformat wird nicht unterstützt: " + imagePath);
+                }
+                bufferedImageCacheService.addImage(imagePath.getImageUrl(), bufferedImage);
+            } catch (Exception e) {
+                throw new IOException("Fehler beim Laden des Bildes: " + e.getMessage());
             }
-            
-            // Konvertiere BufferedImage zu byte array
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(bufferedImage, "png", baos);
-            byte[] imageData = baos.toByteArray();
-            
-            // Erstelle PDImageXObject aus dem byte array
-            return PDImageXObject.createFromByteArray(document, imageData, "image");
         }
+    
+        // Zuschneiden des Bildes, wenn CropSettings angegeben sind
+        if (cropSettings != null) {
+            bufferedImage = cropImage(bufferedImage, cropSettings);
+        }
+    
+        // Berechnung der maximalen Dimensionen basierend auf PdfProperties
+        int maxDpi = properties.getMaxDpi() != null ? properties.getMaxDpi() : 300; // Maximalauflösung
+        float mmToInches = 25.4f;
+        int maxWidthPx = (int) (properties.getWidth() * maxDpi / mmToInches);
+        int maxHeightPx = (int) (properties.getHeight() * maxDpi / mmToInches);
+    
+        // Skalierung des Bildes, falls erforderlich
+        if (bufferedImage.getWidth() > maxWidthPx || bufferedImage.getHeight() > maxHeightPx) {
+            bufferedImage = scaleImage(bufferedImage, maxWidthPx, maxHeightPx);
+        }
+    
+        // Konvertiere BufferedImage zu byte array
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(bufferedImage, "png", baos);
+        byte[] imageData = baos.toByteArray();
+    
+        // Erstelle PDImageXObject aus dem byte array
+        return PDImageXObject.createFromByteArray(document, imageData, "image");
+    }
+    
+    
+    private BufferedImage scaleImage(BufferedImage originalImage, int maxWidth, int maxHeight) {
+        int newWidth = originalImage.getWidth();
+        int newHeight = originalImage.getHeight();
+    
+        if (originalImage.getWidth() > maxWidth) {
+            newWidth = maxWidth;
+            newHeight = (originalImage.getHeight() * maxWidth) / originalImage.getWidth();
+        }
+    
+        if (newHeight > maxHeight) {
+            newHeight = maxHeight;
+            newWidth = (originalImage.getWidth() * maxHeight) / originalImage.getHeight();
+        }
+    
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, originalImage.getType());
+        Graphics2D g2d = scaledImage.createGraphics();
+        g2d.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
+        g2d.dispose();
+        return scaledImage;
+    }
+    
+
+    private static BufferedImage cropImage(BufferedImage image, CropSettingsDto cropSettings) {
+        int padding = cropSettings.getPadding() != null ? cropSettings.getPadding() : 0;
+        int offsetX = cropSettings.getOffSetX() != null ? cropSettings.getOffSetX() : 0;
+        int offsetY = cropSettings.getOffSetY() != null ? cropSettings.getOffSetY() : 0;
+        int cropWidth = cropSettings.getWidth() != null && cropSettings.getWidth() > 0? cropSettings.getWidth() : image.getWidth();
+        int cropHeight = cropSettings.getHeight() != null && cropSettings.getHeight() > 0 ? cropSettings.getHeight() : image.getHeight();
+
+        // Berechnung der Zuschnitte unter Berücksichtigung der Bildgrenzen
+        int x = Math.max(0, offsetX + padding);
+        int y = Math.max(0, offsetY + padding);
+        int width = Math.min(image.getWidth() - x, cropWidth - 2 * padding);
+        int height = Math.min(image.getHeight() - y, cropHeight - 2 * padding);
+
+        // Sicherstellen, dass die Dimensionen gültig sind
+        if (width <= 0 || height <= 0) {
+            throw new IllegalArgumentException("Invalid crop dimensions: width=" + width + ", height=" + height);
+        }
+
+        // Zuschneiden und zurückgeben
+        return image.getSubimage(x, y, width, height);
     }
 
     private static final int OFFSET = 1; // Pixel-Offset vom Rand
@@ -155,22 +235,23 @@ public class DocumentGenerator {
 
     private static Color getAverageColor(Color[] colors) {
         int redSum = 0, greenSum = 0, blueSum = 0;
-        
+
         for (Color color : colors) {
             redSum += color.getRed();
             greenSum += color.getGreen();
             blueSum += color.getBlue();
         }
-        
+
         int redAvg = redSum / colors.length;
         int greenAvg = greenSum / colors.length;
         int blueAvg = blueSum / colors.length;
-        
+
         return new Color(redAvg, greenAvg, blueAvg);
     }
 
     private void drawGridLines(PDPageContentStream contentStream, List<Float> verticalLines,
-                               List<Float> horizontalLines, float gridMargin, float pageWidth, float pageHeight, String colorHex, Integer thickness) throws IOException {
+            List<Float> horizontalLines, float gridMargin, float pageWidth, float pageHeight, String colorHex,
+            Integer thickness) throws IOException {
         Color color = Color.decode(colorHex);
         contentStream.setStrokingColor(color);
         contentStream.setLineWidth(((thickness != null ? thickness : 3) * 0.5f));
@@ -200,8 +281,9 @@ public class DocumentGenerator {
         }
     }
 
-    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height, Color color) throws IOException {
-        
+    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height,
+            Color color) throws IOException {
+
         contentStream.setNonStrokingColor(color);
 
         float cornerRadius = height * 0.03f; // Radius der abgerundeten Ecke
@@ -219,7 +301,8 @@ public class DocumentGenerator {
         drawRoundedCorner(contentStream, x + width, y, cornerRadius, 3);
     }
 
-    private void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius, int quadrant) throws IOException {
+    private void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
+            int quadrant) throws IOException {
         float startAngle, endAngle;
         boolean leftSide, bottomSide;
         float x1, x2, y1, y2;
@@ -265,12 +348,11 @@ public class DocumentGenerator {
         contentStream.moveTo(cornerX, cornerY);
         contentStream.lineTo(x1, y1);
         contentStream.curveTo(
-            (float) (cornerX + (leftSide ? 1 : -1) * radius +  radius * Math.cos(Math.toRadians(startAngle + 35))),
-            (float) (cornerY + (bottomSide ? 1 : -1) * radius +  radius * Math.sin(Math.toRadians(startAngle + 35))),
-            (float) (cornerX + (leftSide ? 1 : -1) * radius +  radius * Math.cos(Math.toRadians(endAngle - 35))),
-            (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius* Math.sin(Math.toRadians(endAngle - 35))),
-            x2, y2
-        );
+                (float) (cornerX + (leftSide ? 1 : -1) * radius + radius * Math.cos(Math.toRadians(startAngle + 35))),
+                (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius * Math.sin(Math.toRadians(startAngle + 35))),
+                (float) (cornerX + (leftSide ? 1 : -1) * radius + radius * Math.cos(Math.toRadians(endAngle - 35))),
+                (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius * Math.sin(Math.toRadians(endAngle - 35))),
+                x2, y2);
         contentStream.closePath();
         contentStream.fill();
     }

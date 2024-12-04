@@ -30,4 +30,7 @@ public class ApiConfigParameter {
 
     @Column
     private String value;
+
+    @Column
+    private String category;
 }

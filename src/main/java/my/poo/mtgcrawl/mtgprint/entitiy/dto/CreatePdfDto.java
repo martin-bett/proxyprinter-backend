@@ -7,6 +7,7 @@ import lombok.Data;
 
 @Data
 public class CreatePdfDto {
-    private List<String> imageUrls = new ArrayList<>(); 
+    private List<ImageDto> images = new ArrayList<>(); 
     private PdfProperties settings;
+
 }

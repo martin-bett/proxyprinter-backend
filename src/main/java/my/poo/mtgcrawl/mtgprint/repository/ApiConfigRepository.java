@@ -3,7 +3,6 @@ package my.poo.mtgcrawl.mtgprint.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -37,14 +36,14 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
             WITH new_config AS (
                 INSERT INTO proxymaster.api_config (
                     category, official_website, name, custom_arts, method, request_format, base_url, concurrent_limit,
-                    data_format, pagination_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy,
+                    data_format,pagination_max_page_field, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy,
                     data_list_field, name_field, name_split_character, image_url_field, language_field, set_field,
                     set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field,
                     follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field,
                     nested_language_language_field, ip_address, browser_fingerprint, published
                 )
                 SELECT category, official_website, name || '_copy', custom_arts, method, request_format, base_url,
-                       concurrent_limit, data_format, pagination_field, csrf_token_variable_name, requires_csrf_token,
+                       concurrent_limit, data_format,pagination_max_page_field, pagination_link_field, csrf_token_variable_name, requires_csrf_token,
                        use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field,
                        language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field,
                        follow_link_image_field, follow_link_language_field, nested_language_data_list_field,
@@ -53,8 +52,8 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
                 WHERE id = :id
                 RETURNING id
             )
-            INSERT INTO proxymaster.api_config_parameter (config_id, name, value)
-            SELECT (SELECT id FROM new_config), name, value
+            INSERT INTO proxymaster.api_config_parameter (config_id, name,category, value)
+            SELECT (SELECT id FROM new_config), name,category, value
             FROM proxymaster.api_config_parameter
             WHERE config_id = :id
             RETURNING (SELECT id FROM new_config)

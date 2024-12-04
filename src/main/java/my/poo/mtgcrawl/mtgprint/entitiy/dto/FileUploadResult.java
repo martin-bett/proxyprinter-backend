@@ -2,7 +2,7 @@ package my.poo.mtgcrawl.mtgprint.entitiy.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import my.poo.mtgcrawl.mtgprint.service.rest.WrapperException;
+import my.poo.mtgcrawl.mtgprint.service.rest.exc.WrapperException;
 
 @Data
 @NoArgsConstructor

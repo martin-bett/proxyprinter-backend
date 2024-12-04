@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2024-11-18T18:47:12+0100",
+    date = "2024-12-02T20:17:35+0100",
     comments = "version: 1.4.2.Final, compiler: Eclipse JDT (IDE) 3.40.0.v20240919-1711, environment: Java 17.0.12 (Eclipse Adoptium)"
 )
 @Component
@@ -46,7 +46,8 @@ public class ApiConfigMapperImpl implements ApiConfigMapper {
         apiConfigDto.setNestedLanguageImageUrlField( apiConfig.getNestedLanguageImageUrlField() );
         apiConfigDto.setNestedLanguageLanguageField( apiConfig.getNestedLanguageLanguageField() );
         apiConfigDto.setOfficialWebsite( apiConfig.getOfficialWebsite() );
-        apiConfigDto.setPaginationField( apiConfig.getPaginationField() );
+        apiConfigDto.setPaginationLinkField( apiConfig.getPaginationLinkField() );
+        apiConfigDto.setPaginationMaxPageField( apiConfig.getPaginationMaxPageField() );
         apiConfigDto.setPublished( apiConfig.isPublished() );
         apiConfigDto.setRequestFormat( apiConfig.getRequestFormat() );
         apiConfigDto.setRequiresCsrfToken( apiConfig.getRequiresCsrfToken() );
@@ -89,7 +90,8 @@ public class ApiConfigMapperImpl implements ApiConfigMapper {
         apiConfig.setNestedLanguageImageUrlField( dto.getNestedLanguageImageUrlField() );
         apiConfig.setNestedLanguageLanguageField( dto.getNestedLanguageLanguageField() );
         apiConfig.setOfficialWebsite( dto.getOfficialWebsite() );
-        apiConfig.setPaginationField( dto.getPaginationField() );
+        apiConfig.setPaginationLinkField( dto.getPaginationLinkField() );
+        apiConfig.setPaginationMaxPageField( dto.getPaginationMaxPageField() );
         if ( dto.getPublished() != null ) {
             apiConfig.setPublished( dto.getPublished() );
         }

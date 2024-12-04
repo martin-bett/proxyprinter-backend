@@ -35,6 +35,29 @@ public class FileDownloadService {
         if (fileName == null) return null;
     
         // Suche zuerst nach der Datei ohne Erweiterung
+        String existingFileName = checkFileExists(fileName);
+        if(existingFileName != null){
+            return existingFileName;
+        }
+    
+        // Wenn die Datei nicht existiert, fahren Sie mit dem Download fort
+        String finalUrl = followRedirects(url);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
+        HttpEntity<byte[]> entity = new HttpEntity<>(headers);
+    
+        ResponseEntity<byte[]> response = restTemplate.exchange(finalUrl, HttpMethod.GET, entity, byte[].class);
+        
+        if (response.getStatusCode() == HttpStatus.OK) {
+            byte[] fileContent = response.getBody();
+            return saveByteArray(fileContent, fileName);
+        } else {
+            log.error("Failed to download file. Status code: " + response.getStatusCode());
+            return null;
+        }
+    }
+
+    public String checkFileExists(String fileName){
         Path baseFilePath = Paths.get(IMG_CACHE_FOLDER + fileName);
         try {
             Optional<Path> existingFile = Files.list(baseFilePath.getParent())
@@ -48,36 +71,25 @@ public class FileDownloadService {
         } catch (IOException e) {
             log.error("Error checking for existing file: " + e.getMessage(), e);
         }
-    
-        // Wenn die Datei nicht existiert, fahren Sie mit dem Download fort
-        String finalUrl = followRedirects(url);
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
-        HttpEntity<byte[]> entity = new HttpEntity<>(headers);
-    
-        ResponseEntity<byte[]> response = restTemplate.exchange(finalUrl, HttpMethod.GET, entity, byte[].class);
-    
-        if (response.getStatusCode() == HttpStatus.OK) {
-            try {
-                byte[] fileContent = response.getBody();
-                // Detect MIME type
-                String mimeType = tika.detect(fileContent);
-                String extension = MimeTypes.getDefaultMimeTypes().forName(mimeType).getExtension();
-    
-                // Create file name with correct extension
-                String fullFileName = IMG_CACHE_FOLDER + fileName + extension;
-                Path filePath = Paths.get(fullFileName);
-    
-                Files.createDirectories(filePath.getParent());
-                Files.write(filePath, fileContent);
-                log.debug("File downloaded successfully: " + fullFileName);
-                return fullFileName;
-            } catch (Exception e) {
-                log.error("Error writing file: " + e.getMessage(), e);
-                return null;
-            }
-        } else {
-            log.error("Failed to download file. Status code: " + response.getStatusCode());
+        return null;
+    }
+
+    public String saveByteArray(byte[] fileContent, String fileName){
+        try {
+            // Detect MIME type
+            String mimeType = tika.detect(fileContent);
+            String extension = MimeTypes.getDefaultMimeTypes().forName(mimeType).getExtension();
+
+            // Create file name with correct extension
+            String fullFileName = IMG_CACHE_FOLDER + fileName + extension;
+            Path filePath = Paths.get(fullFileName);
+
+            Files.createDirectories(filePath.getParent());
+            Files.write(filePath, fileContent);
+            log.debug("File downloaded successfully: " + fullFileName);
+            return fullFileName;
+        } catch (Exception e) {
+            log.error("Error writing file: " + e.getMessage(), e);
             return null;
         }
     }

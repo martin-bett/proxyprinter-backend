@@ -1,5 +1,7 @@
 package my.poo.mtgcrawl.mtgprint.entitiy.dto;
 
+import java.util.Map;
+
 import lombok.Data;
 
 @Data
@@ -21,7 +23,7 @@ public class ApiConfigDto {
     private String method;
     private String requestFormat;
     private String baseUrl;
-    private java.util.Map<String, Object> parameterMap;
+    private Map<String,Map<String, String>> parameterMap;
     private int concurrentLimit;
     private String dataFormat;
     
@@ -39,7 +41,8 @@ public class ApiConfigDto {
     private String languageField;
     private String setField;
     private String setNumberField;
-    private String paginationField;
+    private String paginationLinkField;
+    private String paginationMaxPageField;
 
     // Extended Datalocator
     private String followLinkField;

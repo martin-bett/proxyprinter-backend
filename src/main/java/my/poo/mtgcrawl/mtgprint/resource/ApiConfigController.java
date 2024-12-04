@@ -1,10 +1,8 @@
 package my.poo.mtgcrawl.mtgprint.resource;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,7 +21,6 @@ import my.poo.mtgcrawl.mtgprint.repository.ApiConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.mapper.ApiConfigMapper;
 import my.poo.mtgcrawl.mtgprint.service.rest.ApiConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.RatingService;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -106,7 +103,6 @@ public class ApiConfigController{
             HttpServletRequest httpRequest) {
         VisitorIdentifier visitorId = extractVisitorIdentifier(httpRequest);
         ratingService.saveOrUpdateRating(visitorId, configId, request.getScore(), request.getComment(), request.getAction());
-        apiConfigService.updateAverageRating(configId);
         return ResponseEntity.ok().build();
     }
 
@@ -116,10 +112,10 @@ public class ApiConfigController{
         return new VisitorIdentifier(ip, fingerprint);
     }
 
-    private boolean isValidVisitorIdentifier(VisitorIdentifier identifier) {
-        return identifier.getIpAddress() != null && !identifier.getIpAddress().isEmpty() &&
-               identifier.getBrowserFingerprint() != null && !identifier.getBrowserFingerprint().isEmpty();
-    }
+    // private boolean isValidVisitorIdentifier(VisitorIdentifier identifier) {
+    //     return identifier.getIpAddress() != null && !identifier.getIpAddress().isEmpty() &&
+    //            identifier.getBrowserFingerprint() != null && !identifier.getBrowserFingerprint().isEmpty();
+    // }
 
     private ApiConfigDto toDTO(ApiConfig apiconfig1) {
         ApiConfigDto d = mapper.toDTO(apiconfig1);

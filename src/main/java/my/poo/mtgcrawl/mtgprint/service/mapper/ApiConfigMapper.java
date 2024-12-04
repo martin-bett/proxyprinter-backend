@@ -27,29 +27,43 @@ public interface ApiConfigMapper {
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
     ApiConfig toEntity(ApiConfigDto dto);
 
-    default Map<String, Object> mapParametersToMap(List<ApiConfigParameter> parameters) {
+    default Map<String, Map<String, String>> mapParametersToMap(List<ApiConfigParameter> parameters) {
         if (parameters == null) {
             return new HashMap<>();
         }
+
         return parameters.stream()
-            .collect(Collectors.toMap(
-                ApiConfigParameter::getName,
-                ApiConfigParameter::getValue,
-                (existing, replacement) -> replacement
+            .filter(param -> param.getCategory() != null && param.getName() != null && param.getValue() != null)
+            .collect(Collectors.groupingBy(
+                ApiConfigParameter::getCategory,
+                Collectors.toMap(
+                    ApiConfigParameter::getName,
+                    ApiConfigParameter::getValue,
+                    (existing, replacement) -> replacement,
+                    HashMap::new
+                )
             ));
     }
 
 
-    default List<ApiConfigParameter> mapMapToParameters(Map<String, Object> parameterMap) {
-        if (parameterMap == null || parameterMap.isEmpty()) {
+    default List<ApiConfigParameter> mapMapToParameters(Map<String, Map<String, String>> parameterMap) {
+        if (parameterMap == null) {
             return new ArrayList<>();
         }
+
         return parameterMap.entrySet().stream()
-            .map(entry -> {
-                ApiConfigParameter parameter = new ApiConfigParameter();
-                parameter.setName(entry.getKey());
-                parameter.setValue(String.valueOf(entry.getValue()));
-                return parameter;
+            .flatMap(categoryEntry -> {
+                String category = categoryEntry.getKey();
+                Map<String, String> params = categoryEntry.getValue();
+                
+                return params.entrySet().stream()
+                    .map(paramEntry -> {
+                        ApiConfigParameter parameter = new ApiConfigParameter();
+                        parameter.setCategory(category);
+                        parameter.setName(paramEntry.getKey());
+                        parameter.setValue(paramEntry.getValue());
+                        return parameter;
+                    });
             })
             .collect(Collectors.toList());
     }

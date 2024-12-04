@@ -56,7 +56,9 @@ public class ApiConfig {
     @Column
     private String baseUrl;
     @Column
-    private String paginationField;
+    private String paginationLinkField;    
+    @Column
+    private String paginationMaxPageField;
 
     @Column
     private Boolean customArts;

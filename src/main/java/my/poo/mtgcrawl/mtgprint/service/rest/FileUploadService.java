@@ -4,7 +4,6 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -21,6 +20,8 @@ import org.springframework.web.multipart.MultipartFile;
 import lombok.extern.slf4j.Slf4j;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.FileUploadResult;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
+import my.poo.mtgcrawl.mtgprint.service.rest.exc.FileWriteException;
+import my.poo.mtgcrawl.mtgprint.service.rest.exc.WrongFormatException;
 
 @Service
 @Slf4j

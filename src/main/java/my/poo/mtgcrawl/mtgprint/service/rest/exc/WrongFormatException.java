@@ -1,4 +1,4 @@
-package my.poo.mtgcrawl.mtgprint.service.rest;
+package my.poo.mtgcrawl.mtgprint.service.rest.exc;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

@@ -32,6 +32,7 @@ public class PdfController {
         String progressId = UUID.randomUUID().toString();
         CompletableFuture.runAsync(() -> {
             try {
+                Thread.sleep(500);
                 byte[] pdfContent = libTexService.generateDocument(request, progressId);
                 pdfCache.put(progressId, pdfContent);
             } catch (Exception e) {

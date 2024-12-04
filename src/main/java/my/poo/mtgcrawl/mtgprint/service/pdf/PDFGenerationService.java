@@ -3,6 +3,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.CropSettingsDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.ImageDto;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileUploadService;
@@ -28,41 +30,53 @@ public class PDFGenerationService {
         this.hashService = hashService;
     }
     public byte[] generateDocument(CreatePdfDto request, String progressId) throws Exception {
-        try {
-            List<String> downloadedFileNames = new ArrayList<>();
-            int totalFiles = request.getImageUrls().size();
-            sendProgress(progressId, "Starting Download of "+totalFiles+" Files");
-            for (int i = 0; i < totalFiles; i++) {
-                String url = request.getImageUrls().get(i);
-                if(url != null){
-                    if(url.startsWith("/api/files/download/")){
-                        downloadedFileNames.add(FileUploadService.IMG_TEMP_FOLDER + url.replace("/api/files/download/", ""));  
-                        sendProgress(progressId, "Added Uploaded file " + (i + 1) + " of " + totalFiles);
-                    } else {
-                        try {
-                            String fileName = fileDownloadService.downloadFile(url, hashService.curFileName(url));
-                            downloadedFileNames.add(fileName);
-                            sendProgress(progressId, "Downloaded file " + (i + 1) + " of " + totalFiles);
-                        } catch (Exception e) {
-                            
-                        }
-
+    try {
+        List<ImageDto> processedImages = new ArrayList<>();
+        int totalFiles = request.getImages().size();
+        sendProgress(progressId, "Starting download of " + totalFiles + " files");
+        
+        for (int i = 0; i < totalFiles; i++) {
+            ImageDto image = request.getImages().get(i);
+            String url = image.getImageUrl();
+            CropSettingsDto cropSettings = image.getCropSettings();
+            
+            if (url != null) {
+                String filePath = null;
+                if (url.startsWith("/api/files/download/")) {
+                    filePath = FileUploadService.IMG_TEMP_FOLDER + url.replace("/api/files/download/", "");
+                    sendProgress(progressId, "Added uploaded file " + (i + 1) + " of " + totalFiles);
+                } else {
+                    try {
+                        filePath = fileDownloadService.downloadFile(url, hashService.curFileName(url));
+                        sendProgress(progressId, "Downloaded file " + (i + 1) + " of " + totalFiles);
+                    } catch (Exception e) {
+                        sendProgress(progressId, "Failed to download file " + (i + 1) + ": " + e.getMessage());
                     }
                 }
+
+                if (filePath != null) {
+                    // Füge den Dateipfad und die Crop-Settings zum DTO hinzu
+                    ImageDto processedImage = new ImageDto();
+                    processedImage.setImageUrl(filePath);
+                    processedImage.setCropSettings(cropSettings);
+                    processedImages.add(processedImage);
+                }
             }
-            
-            sendProgress(progressId, "Starting PDF compilation");
-            
-            byte[] pdfData = latexDocumentGenerator.generateDocument(downloadedFileNames, request.getSettings());
-            
-            sendProgress(progressId, "PDF compilation completed");
-            
-            return pdfData;
-        } catch (Exception e) {
-            sendProgress(progressId, "Error: " + e.getMessage());
-            throw e;
         }
+        
+        sendProgress(progressId, "Starting PDF compilation");
+        
+        // Übergeben der verarbeiteten Bilder an den PDF-Generator
+        byte[] pdfData = latexDocumentGenerator.generateDocument(processedImages, request.getSettings());
+        
+        sendProgress(progressId, "PDF compilation completed");
+        
+        return pdfData;
+    } catch (Exception e) {
+        sendProgress(progressId, "Error: " + e.getMessage());
+        throw e;
     }
+}
 
 
 

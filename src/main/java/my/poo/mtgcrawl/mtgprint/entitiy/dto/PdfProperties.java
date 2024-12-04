@@ -8,6 +8,7 @@ public class PdfProperties {
     private Integer height;
     private Integer hmargin;
     private Integer vmargin;
+    private Integer maxDpi;
     private boolean cutlines;
     private Integer cutlineThickness;
     private String cutlineColor;
