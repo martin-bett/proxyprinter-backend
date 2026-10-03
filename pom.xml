@@ -5,7 +5,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.2.5</version>
+		<version>3.5.6</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>my.poo.mtgcrawl</groupId>
@@ -15,7 +15,7 @@
 	<name>proxymaster</name>
 	<description>Demo project for Spring Boot</description>
 	<properties>
-		<java.version>21</java.version>
+		<java.version>25</java.version>
 	</properties>
 	<dependencies>
 
@@ -101,14 +101,14 @@
 	<!-- Postgres Objects -->
 	<dependency>
 		<groupId>io.hypersistence</groupId>
-		<artifactId>hypersistence-utils-hibernate-60</artifactId>
-		<version>3.8.3</version>
+		<artifactId>hypersistence-utils-hibernate-63</artifactId>
+		<version>3.11.0</version>
 	</dependency>
 		<!-- Mapstruct -->
 		<dependency>
 			<groupId>org.mapstruct</groupId>
 			<artifactId>mapstruct</artifactId>
-			<version>1.4.1.Final</version>
+			<version>1.6.3</version>
 		</dependency>
 
    <dependency>
@@ -170,10 +170,8 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.8.1</version>
 				<configuration>
-					<source>21</source>
-					<target>21</target>
+					<release>${java.version}</release>
 					<annotationProcessorPaths>
 						<path>
 							<groupId>org.projectlombok</groupId>
@@ -188,7 +186,7 @@
 						<path>
 							<groupId>org.mapstruct</groupId>
 							<artifactId>mapstruct-processor</artifactId>
-							<version>1.4.2.Final</version>
+							<version>1.6.3</version>
 						</path>
 					</annotationProcessorPaths>
 					<compilerArgs>

@@ -1,5 +1,5 @@
-# Use the official Maven image with Java 21 as the base image
-FROM maven:3.9.5-eclipse-temurin-21 AS build
+# Use the official Maven image with Java 25 as the base image
+FROM maven:3.9.11-eclipse-temurin-25 AS build
 
 # Set the working directory
 WORKDIR /app
@@ -12,7 +12,7 @@ COPY ./src /app/src
 RUN mvn clean package -Dmaven.test.skip=true
 
 # Create a new image for running the application
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:25-jre
 
 # Set the working directory
 WORKDIR /app
