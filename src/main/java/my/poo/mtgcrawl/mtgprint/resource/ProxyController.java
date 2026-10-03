@@ -1,6 +1,5 @@
 package my.poo.mtgcrawl.mtgprint.resource;
 
-import org.apache.commons.io.IOUtils;
 import org.springframework.http.*;
 import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.util.LinkedMultiValueMap;
@@ -15,9 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
 
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -130,6 +129,9 @@ public class ProxyController {
 
     @GetMapping("/image")
     public ResponseEntity<byte[]> proxyImageRequest(@RequestHeader("X-Target-URL") String targetUrl) {
+        if (targetUrl == null || !(targetUrl.startsWith("http://") || targetUrl.startsWith("https://"))) {
+            return ResponseEntity.badRequest().build();
+        }
         String fileName =  hashService.curFileName(targetUrl);
         String exisitingFileName = fileDownloadService.checkFileExists(fileName);
         
@@ -138,7 +140,12 @@ public class ProxyController {
 
         if(exisitingFileName != null){
             try {
-                byte[]  fileContent = IOUtils.toByteArray(new FileInputStream(exisitingFileName));
+                Path path = Path.of(exisitingFileName);
+                byte[] fileContent = Files.readAllBytes(path);
+                String contentType = Files.probeContentType(path);
+                if (contentType != null) {
+                    responseHeaders.setContentType(MediaType.parseMediaType(contentType));
+                }
                 return new ResponseEntity<>(fileContent, responseHeaders, HttpStatus.OK);
             } catch (Exception e) {
                 return ResponseEntity.internalServerError().build();
@@ -147,15 +154,23 @@ public class ProxyController {
             HttpHeaders headers = new HttpHeaders();
             headers.setAccept(Arrays.asList(MediaType.IMAGE_JPEG, MediaType.IMAGE_PNG, MediaType.ALL));
             HttpEntity<?> entity = new HttpEntity<>(headers);
-            ResponseEntity<byte[]> response = restTemplate.exchange(targetUrl, HttpMethod.GET, entity, byte[].class);
-            if (response.getStatusCode().is3xxRedirection()) {
-                String redirectUrl = response.getHeaders().getLocation().toString();
-                response = restTemplate.exchange(redirectUrl, HttpMethod.GET, entity, byte[].class);
+            try {
+                ResponseEntity<byte[]> response = restTemplate.exchange(targetUrl, HttpMethod.GET, entity, byte[].class);
+                if (response.getStatusCode().is3xxRedirection() && response.getHeaders().getLocation() != null) {
+                    String redirectUrl = response.getHeaders().getLocation().toString();
+                    response = restTemplate.exchange(redirectUrl, HttpMethod.GET, entity, byte[].class);
+                }
+                byte[] fileContent = response.getBody();
+                if (!response.getStatusCode().is2xxSuccessful() || fileContent == null || fileContent.length == 0) {
+                    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).headers(responseHeaders).build();
+                }
+                fileDownloadService.saveByteArray(fileContent,fileName);
+                responseHeaders.setContentType(response.getHeaders().getContentType());
+                return new ResponseEntity<>(fileContent, responseHeaders, HttpStatus.OK);
+            } catch (Exception e) {
+                log.warn("Bild konnte nicht geladen werden: {} ({})", targetUrl, e.getMessage());
+                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).headers(responseHeaders).build();
             }
-            byte[] fileContent = response.getBody();
-            fileDownloadService.saveByteArray(fileContent,fileName);
-            responseHeaders.setContentType(response.getHeaders().getContentType());
-            return new ResponseEntity<>(fileContent, responseHeaders, response.getStatusCode());
         }
     }
 

@@ -77,6 +77,9 @@ public class ApiConfig {
     private Boolean requiresCsrfToken;
     @Column
     private Boolean useBackendProxy;
+    // Bilder dieser API über /api/proxy/image laden (CORS, Cache im Backend)
+    @Column
+    private Boolean proxyImages;
 
     // Datalocator
     @Column
