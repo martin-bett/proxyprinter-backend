@@ -32,6 +32,7 @@ public class ApiConfigDto {
     private String csrfTokenVariableName;
     private Boolean requiresCsrfToken;
     private Boolean useBackendProxy;
+    private Boolean proxyImages;
 
     // Datalocator
     private String dataListField;
