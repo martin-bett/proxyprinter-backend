@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -33,12 +34,20 @@ public class FileUploadService {
 
     public FileUploadService(HashService hashService) {
         this.hashService = hashService;
+        try {
+            Files.createDirectories(Paths.get(IMG_TEMP_FOLDER));
+        } catch (IOException e) {
+            log.error("Konnte Upload-Ordner {} nicht anlegen", IMG_TEMP_FOLDER, e);
+        }
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 60)
     public void clearTempFiles(){
-        File folder = new File(IMG_TEMP_FOLDER);
-        for(File f : folder.listFiles()){
+        File[] files = new File(IMG_TEMP_FOLDER).listFiles();
+        if (files == null) {
+            return;
+        }
+        for(File f : files){
             if(new Date().getTime() - f.lastModified() >= 24 * 60 * 60 * 1000){
                 f.delete();
             }                
