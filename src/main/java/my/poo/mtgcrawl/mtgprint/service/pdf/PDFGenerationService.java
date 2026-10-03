@@ -1,108 +1,97 @@
 package my.poo.mtgcrawl.mtgprint.service.pdf;
+
+import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CropSettingsDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ImageDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto.Category;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileUploadService;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-
+/**
+ * Baut ein PDF in den Phasen download → build → finishing und meldet den
+ * Fortschritt an den {@link PdfJob}. Die Warteschlange liegt im
+ * {@link PDFGenerationManagerService}.
+ */
 @Service
 public class PDFGenerationService {
 
     private final DocumentGenerator latexDocumentGenerator;
     private final FileDownloadService fileDownloadService;
     private final HashService hashService;
-    private final Map<String, SseEmitter> emitters = new ConcurrentHashMap<>();
+    private final PdfCacheService pdfCacheService;
 
-    public PDFGenerationService(DocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService, HashService hashService) {
+    public PDFGenerationService(DocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService,
+            HashService hashService, PdfCacheService pdfCacheService) {
         this.latexDocumentGenerator = latexDocumentGenerator;
         this.fileDownloadService = fileDownloadService;
         this.hashService = hashService;
+        this.pdfCacheService = pdfCacheService;
     }
-    public byte[] generateDocument(CreatePdfDto request, String progressId) throws Exception {
-    try {
+
+    public void generateDocument(PdfJob job) throws Exception {
+        String progressId = job.progressId;
+        CreatePdfDto request = job.request;
         List<ImageDto> processedImages = new ArrayList<>();
         int totalFiles = request.getImages().size();
-        sendProgress(progressId, "Starting download of " + totalFiles + " files");
-        
+        long totalFileSize = 0;
+
+        job.sendProgress(ProgressDto.of(progressId, Category.download, "Starting download of " + totalFiles + " files", 0, totalFiles));
+
         for (int i = 0; i < totalFiles; i++) {
             ImageDto image = request.getImages().get(i);
             String url = image.getImageUrl();
             CropSettingsDto cropSettings = image.getCropSettings();
-            
-            if (url != null) {
-                String filePath = null;
-                if (url.startsWith("/api/files/download/")) {
-                    filePath = FileUploadService.IMG_TEMP_FOLDER + url.replace("/api/files/download/", "");
-                    sendProgress(progressId, "Added uploaded file " + (i + 1) + " of " + totalFiles);
-                } else {
-                    try {
-                        filePath = fileDownloadService.downloadFile(url, hashService.curFileName(url));
-                        sendProgress(progressId, "Downloaded file " + (i + 1) + " of " + totalFiles);
-                    } catch (Exception e) {
-                        sendProgress(progressId, "Failed to download file " + (i + 1) + ": " + e.getMessage());
-                    }
-                }
+            if (url == null) {
+                continue;
+            }
 
-                if (filePath != null) {
-                    // Füge den Dateipfad und die Crop-Settings zum DTO hinzu
-                    ImageDto processedImage = new ImageDto();
-                    processedImage.setImageUrl(filePath);
-                    processedImage.setCropSettings(cropSettings);
-                    processedImages.add(processedImage);
+            String filePath = null;
+            String message;
+            if (url.startsWith("/api/files/download/")) {
+                filePath = FileUploadService.IMG_TEMP_FOLDER + url.replace("/api/files/download/", "");
+                message = "Added uploaded file " + (i + 1) + " of " + totalFiles;
+            } else {
+                try {
+                    filePath = fileDownloadService.downloadFile(url, hashService.curFileName(url));
+                    message = "Downloaded file " + (i + 1) + " of " + totalFiles;
+                } catch (Exception e) {
+                    message = "Failed to download file " + (i + 1) + ": " + e.getMessage();
                 }
             }
-        }
-        
-        sendProgress(progressId, "Starting PDF compilation");
-        
-        // Übergeben der verarbeiteten Bilder an den PDF-Generator
-        byte[] pdfData = latexDocumentGenerator.generateDocument(processedImages, request.getSettings());
-        
-        sendProgress(progressId, "PDF compilation completed");
-        
-        return pdfData;
-    } catch (Exception e) {
-        sendProgress(progressId, "Error: " + e.getMessage());
-        throw e;
-    }
-}
 
-
-
-    public SseEmitter createSseEmitter(String id) {
-        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
-        emitters.put(id, emitter);
-        emitter.onCompletion(() -> emitters.remove(id));
-        emitter.onTimeout(() -> emitters.remove(id));
-        return emitter;
-    }
-
-    private void sendProgress(String id, String message) {
-        SseEmitter emitter = emitters.get(id);
-        if (emitter != null) {
-            try {
-                emitter.send(SseEmitter.event().data(message));
-            } catch (IOException e) {
-                emitters.remove(id);
+            if (filePath != null) {
+                File f = new File(filePath);
+                if (f.exists()) {
+                    totalFileSize += f.length();
+                }
+                ImageDto processedImage = new ImageDto();
+                processedImage.setImageUrl(filePath);
+                processedImage.setCropSettings(cropSettings);
+                processedImages.add(processedImage);
             }
-        }
-    }
 
-    public void clearFiles(String progressId) {
-        File f = new File(DocumentGenerator.TEMP_PATH  +"/"+ progressId+ "/");
-        if(f.isDirectory()){
-            f.delete();
+            ProgressDto dto = ProgressDto.of(progressId, Category.download, message, i + 1, totalFiles);
+            dto.setFileSize(totalFileSize);
+            job.sendProgress(dto);
         }
+
+        job.sendProgress(ProgressDto.of(progressId, Category.build, "Starting PDF compilation", 0, processedImages.size()));
+
+        byte[] pdfData = latexDocumentGenerator.generateDocument(processedImages, request.getSettings(), progressId, job::sendProgress);
+
+        job.sendProgress(ProgressDto.of(progressId, Category.finishing, "Saving PDF", 0, 1));
+        pdfCacheService.addToCache(progressId, pdfData);
+
+        ProgressDto done = ProgressDto.of(progressId, Category.finishing, "PDF compilation completed", 1, 1);
+        done.setFileSize(pdfData.length);
+        job.sendProgress(done);
     }
 }
