@@ -315,3 +315,9 @@ INSERT INTO proxymaster.gallery_config_parameter
 (id, gallery_id, "name", category, value)
 VALUES(3, 2, 'fullLink', 'url', NULL);
 
+
+-- Sequenzen hinter die festen IDs oben setzen, sonst scheitern Create/Copy
+SELECT setval(pg_get_serial_sequence('proxymaster.api_config', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.api_config), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('proxymaster.api_config_parameter', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.api_config_parameter), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('proxymaster.gallery_config', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.gallery_config), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('proxymaster.gallery_config_parameter', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.gallery_config_parameter), 0) + 1, false);

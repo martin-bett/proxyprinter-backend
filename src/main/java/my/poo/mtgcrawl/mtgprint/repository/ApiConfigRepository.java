@@ -40,23 +40,26 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
                     data_list_field, name_field, name_split_character, image_url_field, language_field, set_field,
                     set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field,
                     follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field,
-                    nested_language_language_field, ip_address, browser_fingerprint, published
+                    nested_language_language_field, ip_address, browser_fingerprint, published, proxy_images
                 )
                 SELECT category, official_website, name || '_copy', custom_arts, method, request_format, base_url,
                        concurrent_limit, data_format,pagination_max_page_field, pagination_link_field, csrf_token_variable_name, requires_csrf_token,
                        use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field,
                        language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field,
                        follow_link_image_field, follow_link_language_field, nested_language_data_list_field,
-                       nested_language_image_url_field, nested_language_language_field, :ipAddress, :browserFingerprint, FALSE
+                       nested_language_image_url_field, nested_language_language_field, :ipAddress, :browserFingerprint, FALSE, proxy_images
                 FROM proxymaster.api_config
                 WHERE id = :id
                 RETURNING id
             )
-            INSERT INTO proxymaster.api_config_parameter (config_id, name,category, value)
-            SELECT (SELECT id FROM new_config), name,category, value
-            FROM proxymaster.api_config_parameter
-            WHERE config_id = :id
-            RETURNING (SELECT id FROM new_config)
+            , new_parameters AS (
+                INSERT INTO proxymaster.api_config_parameter (config_id, name,category, value)
+                SELECT (SELECT id FROM new_config), name,category, value
+                FROM proxymaster.api_config_parameter
+                WHERE config_id = :id
+            )
+            -- Id auch dann liefern, wenn die Quelle keine Parameter hat
+            SELECT id FROM new_config
             """,
         nativeQuery = true
     )
