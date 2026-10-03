@@ -12,10 +12,12 @@ import lombok.extern.slf4j.Slf4j;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CropSettingsDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ImageDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.PdfProperties;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 
 import javax.imageio.ImageIO;
 
@@ -39,7 +41,8 @@ public class DocumentGenerator {
 
     public static final String TEMP_PATH = "tmp";
 
-    public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties) throws IOException {
+    public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties, String progressId,
+            Consumer<ProgressDto> progress) throws IOException {
         try (PDDocument document = new PDDocument()) {
             PDRectangle pageSize = PDRectangle.A4;
             float pageWidth = pageSize.getWidth();
@@ -69,6 +72,11 @@ public class DocumentGenerator {
 
             PDPageContentStream contentStream = new PDPageContentStream(document, page);
 
+            int totalCards = imagePaths.size();
+            int placedCards = 0;
+            int pageCount = 1;
+            long accumulatedFileSize = 0;
+
             for (ImageDto imagePath : imagePaths) {
                 if (cardCount >= cardsPerRow * cardsPerColumn) {
                     if (properties.isCutlines()) {
@@ -79,6 +87,7 @@ public class DocumentGenerator {
                     page = new PDPage(pageSize);
                     document.addPage(page);
                     contentStream = new PDPageContentStream(document, page);
+                    pageCount++;
                     startY = pageHeight - pageMargin - cardHeight;
                     startX = pageMargin;
                     cardCount = 0;
@@ -113,6 +122,16 @@ public class DocumentGenerator {
                 horizontalLines.add(y + cardHeight);
 
                 cardCount++;
+                placedCards++;
+                File imageFile = new File(imagePath.getImageUrl());
+                if (imageFile.exists()) {
+                    accumulatedFileSize += imageFile.length();
+                }
+                ProgressDto dto = ProgressDto.of(progressId, ProgressDto.Category.build,
+                        "Placing card " + placedCards + " of " + totalCards, placedCards, totalCards);
+                dto.setPageCount(pageCount);
+                dto.setFileSize(accumulatedFileSize);
+                progress.accept(dto);
             }
 
             if (properties.isCutlines()) {
