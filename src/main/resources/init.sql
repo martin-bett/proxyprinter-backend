@@ -270,22 +270,21 @@ INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
 VALUES(58, 20, 'q', '{cardname}', 'request');
 
+-- Galerie-Quellen laufen über das Backend (/api/gallery/source/...), das liefert {images:[{name,imageUrl}]}.
+-- Parameter "url" ohne Wert wird im Frontend zum Eingabefeld ($GALLERY_INPUT$).
 INSERT INTO proxymaster.gallery_config
 (id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy)
-VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', 'https://www.reddit.com/r/magicproxies/comments/1gwkskz/iron_fist_proxy_mockups_seeking_input/', 'html', 'img.media-lightbox-img | attr:data-lazy-srcset', 'img.media-lightbox-img | attr:data-lazy-srcset', 'gallery-carousel ul li ', NULL, NULL, NULL, NULL, false, 'GET', NULL, true);
+VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', '/api/gallery/source/reddit', 'json', 'imageUrl', 'name', 'images', NULL, 'https://www.reddit.com/r/magicproxies/', NULL, NULL, true, 'GET', NULL, false);
 INSERT INTO proxymaster.gallery_config
 (id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy)
-VALUES(2, 'MISC'::proxymaster."api_category", 'reddit_gallery', '$fullLink$', 'html', 'img.media-lightbox-img | attr:data-lazy-srcset', 'img.media-lightbox-img | attr:data-lazy-srcset', 'gallery-carousel ul li ', NULL, NULL, NULL, NULL, true, 'GET', NULL, true);
+VALUES(2, 'MISC'::proxymaster."api_category", 'google_drive', '/api/gallery/source/gdrive', 'json', 'imageUrl', 'name', 'images', NULL, 'https://drive.google.com/', NULL, NULL, true, 'GET', NULL, false);
 
 INSERT INTO proxymaster.gallery_config_parameter
 (id, gallery_id, "name", category, value)
-VALUES(1, 1, 'subreddit', 'url', NULL);
+VALUES(1, 1, 'url', 'request', NULL);
 INSERT INTO proxymaster.gallery_config_parameter
 (id, gallery_id, "name", category, value)
-VALUES(2, 1, 'id_comment', 'url', NULL);
-INSERT INTO proxymaster.gallery_config_parameter
-(id, gallery_id, "name", category, value)
-VALUES(3, 2, 'fullLink', 'url', NULL);
+VALUES(2, 2, 'url', 'request', NULL);
 
 
 -- Sequenzen hinter die festen IDs oben setzen, sonst scheitern Create/Copy
