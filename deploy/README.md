@@ -108,7 +108,9 @@ Die Datenbank wird nicht von Hibernate angepasst. Neue Spalten und Daten kommen 
   `proxymaster.schema_migration`. Schlägt ein Skript fehl, bricht der Deploy ab und das alte Backend läuft weiter.
   Beim Rollback auf einen alten Tag laufen keine Migrationen. Der Postgres-Service wird am Image erkannt,
   sonst `DB_SERVICE=<service>` in die `.env` schreiben.
-- **Lokal:** im Ordner dieses Repos nach `git pull` alle Skripte einspielen (`<container>` = Name aus `docker ps`):
+- **Lokal:** nach `git pull` unter Windows `db-update-local.cmd` doppelklicken oder in VS Code
+  *Terminal → Run Task → DB lokal aktualisieren* (Container `proxymaster`, anderer Name als Parameter).
+  Von Hand (`<container>` = Name aus `docker ps`):
 
   ```
   cat src/main/resources/sql/*.sql | docker exec -i <container> sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${POSTGRES_DB:-$POSTGRES_USER}"'
