@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.UUID;
@@ -14,6 +15,7 @@ import java.util.UUID;
 import javax.imageio.ImageIO;
 
 import org.apache.commons.io.IOUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -29,11 +31,13 @@ import my.poo.mtgcrawl.mtgprint.service.rest.exc.WrongFormatException;
 public class FileUploadService {
     
     public static final String IMG_TEMP_FOLDER = "img/temp/";
+    private static final long DAY_MS = 24 * 60 * 60 * 1000L;
     private final HashService hashService;
-    
+    private final long maxAgeMs;
 
-    public FileUploadService(HashService hashService) {
+    public FileUploadService(HashService hashService, @Value("${upload.retention-days:7}") int retentionDays) {
         this.hashService = hashService;
+        this.maxAgeMs = Math.max(1, retentionDays) * DAY_MS;
         try {
             Files.createDirectories(Paths.get(IMG_TEMP_FOLDER));
         } catch (IOException e) {
@@ -48,10 +52,26 @@ public class FileUploadService {
             return;
         }
         for(File f : files){
-            if(new Date().getTime() - f.lastModified() >= 24 * 60 * 60 * 1000){
+            if(new Date().getTime() - f.lastModified() >= maxAgeMs){
                 f.delete();
             }                
         }
+    }
+
+    /**
+     * Setzt die Aufbewahrungszeit eines hochgeladenen Bildes zurück. Das Frontend ruft das
+     * auf, wenn ein Snapshot mit diesem Bild gespeichert oder geladen wird, damit das Bild
+     * erst upload.retention-days nach der letzten Nutzung gelöscht wird.
+     *
+     * @return false, wenn es die Datei nicht (mehr) gibt
+     */
+    public boolean touch(String generatedId) {
+        Path folder = Paths.get(IMG_TEMP_FOLDER).toAbsolutePath().normalize();
+        Path file = folder.resolve(generatedId).normalize();
+        if (!file.getParent().equals(folder) || !Files.isRegularFile(file)) {
+            return false;
+        }
+        return file.toFile().setLastModified(System.currentTimeMillis());
     }
 
     public FileUploadResult uploadFile(MultipartFile file){
