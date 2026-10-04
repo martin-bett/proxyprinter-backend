@@ -28,6 +28,7 @@ public class GalleryConfigDto {
     private String dataListField;
     private String nameField;
     private String imageUrlField;
+    private String defaultLanguage;
 
     private String method;
     private String requestFormat;
