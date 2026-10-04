@@ -79,6 +79,7 @@ CREATE TABLE proxymaster.api_config (
 	published bool DEFAULT false NOT NULL,
 	pagination_max_page_field varchar(255) NULL,
 	proxy_images bool NULL,
+	assume_english bool NULL,
 	CONSTRAINT api_config_pkey PRIMARY KEY (id)
 );
 

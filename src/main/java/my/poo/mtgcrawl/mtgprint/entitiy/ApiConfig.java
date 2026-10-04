@@ -92,6 +92,9 @@ public class ApiConfig {
     private String imageUrlField;
     @Column
     private String languageField;
+    // Karten ohne Sprachangabe im Frontend als Englisch markieren
+    @Column
+    private Boolean assumeEnglish;
     @Column
     private String setField;
     @Column

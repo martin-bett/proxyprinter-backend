@@ -40,6 +40,7 @@ public class ApiConfigDto {
     private String nameSplitCharacter;
     private String imageUrlField;
     private String languageField;
+    private Boolean assumeEnglish;
     private String setField;
     private String setNumberField;
     private String paginationLinkField;
