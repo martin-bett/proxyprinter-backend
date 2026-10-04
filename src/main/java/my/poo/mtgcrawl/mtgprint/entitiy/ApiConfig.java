@@ -114,4 +114,12 @@ public class ApiConfig {
     private String nestedLanguageImageUrlField;
     @Column
     private String nestedLanguageLanguageField;
+
+    // Mehrseitige Karten (z.B. Scryfall card_faces): jede Seite mit Bild wird ein eigener Treffer
+    @Column
+    private String cardFacesDataListField;
+    @Column
+    private String cardFacesImageUrlField;
+    @Column
+    private String cardFacesNameField;
 }

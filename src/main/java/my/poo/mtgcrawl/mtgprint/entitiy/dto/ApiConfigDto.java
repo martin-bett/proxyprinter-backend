@@ -55,4 +55,9 @@ public class ApiConfigDto {
     private String nestedLanguageDataListField;
     private String nestedLanguageImageUrlField;
     private String nestedLanguageLanguageField;
+
+    // Mehrseitige Karten
+    private String cardFacesDataListField;
+    private String cardFacesImageUrlField;
+    private String cardFacesNameField;
 }

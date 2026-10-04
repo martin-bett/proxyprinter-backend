@@ -79,6 +79,9 @@ CREATE TABLE proxymaster.api_config (
 	published bool DEFAULT false NOT NULL,
 	pagination_max_page_field varchar(255) NULL,
 	proxy_images bool NULL,
+	card_faces_data_list_field varchar(255) NULL,
+	card_faces_image_url_field varchar(255) NULL,
+	card_faces_name_field varchar(255) NULL,
 	CONSTRAINT api_config_pkey PRIMARY KEY (id)
 );
 
@@ -131,6 +134,8 @@ VALUES(11, 'MTG'::proxymaster."api_category", '', 'new mmoikk', false, '', '', '
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(8, 'MTG'::proxymaster."api_category", 'https://scryfall.com/', 'scryfall', false, 'GET', NULL, 'https://api.scryfall.com/cards/search', 5, 'json', 'next_page', NULL, NULL, false, 'data', 'name', '//', 'image_uris.png', 'lang', 'set_name', 'collector_number', NULL, NULL, NULL, NULL, NULL, NULL, 'lang', NULL, NULL, true, NULL);
+-- Doppelseitige Karten (Transform, MDFC, ...) haben kein image_uris oben, nur je Seite in card_faces
+UPDATE proxymaster.api_config SET card_faces_data_list_field = 'card_faces', card_faces_image_url_field = 'image_uris.png', card_faces_name_field = 'name' WHERE id = 8;
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(17, 'MISC'::proxymaster."api_category", NULL, 'new config', false, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0:0:0:0:0:0:0:1', '976130e0482b5dd311d9992109824fba', false, NULL);
