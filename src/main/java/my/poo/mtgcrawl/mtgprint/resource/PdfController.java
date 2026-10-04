@@ -1,6 +1,7 @@
 package my.poo.mtgcrawl.mtgprint.resource;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PDFGenerationManagerService;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PdfCacheService;
+import my.poo.mtgcrawl.mtgprint.service.pdf.PdfSizeLimit;
 
 @RestController
 @RequestMapping("/api")
@@ -19,10 +21,19 @@ public class PdfController {
 
     private final PDFGenerationManagerService pdfGenerationManagerService;
     private final PdfCacheService pdfCacheService;
+    private final PdfSizeLimit pdfSizeLimit;
 
-    public PdfController(PDFGenerationManagerService pdfGenerationManagerService, PdfCacheService pdfCacheService) {
+    public PdfController(PDFGenerationManagerService pdfGenerationManagerService, PdfCacheService pdfCacheService,
+            PdfSizeLimit pdfSizeLimit) {
         this.pdfGenerationManagerService = pdfGenerationManagerService;
         this.pdfCacheService = pdfCacheService;
+        this.pdfSizeLimit = pdfSizeLimit;
+    }
+
+    /** Grenzen, die das Frontend vor dem Anfordern prüft. */
+    @GetMapping("/pdf/limits")
+    public Map<String, Long> getLimits() {
+        return Map.of("maxSizeMb", pdfSizeLimit.getMaxSizeMb());
     }
 
     @CrossOrigin
