@@ -94,7 +94,11 @@ public class PDFGenerationManagerService {
             try {
                 pdfGenerationService.generateDocument(job);
             } catch (Throwable e) {
-                log.error("PDF generation failed for " + job.progressId, e);
+                if (e instanceof PdfSizeLimit.PdfTooLargeException) {
+                    log.info("PDF " + job.progressId + " rejected: " + e.getMessage());
+                } else {
+                    log.error("PDF generation failed for " + job.progressId, e);
+                }
                 ProgressDto errorDto = ProgressDto.of(job.progressId, Category.finishing, "Error: " + e.getMessage(), 0, 0);
                 errorDto.setError(true);
                 job.sendProgress(errorDto);
