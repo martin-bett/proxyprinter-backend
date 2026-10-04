@@ -1,5 +1,5 @@
 # Use the official Maven image with Java 25 as the base image
-FROM maven:3.9.11-eclipse-temurin-25 AS build
+FROM --platform=$BUILDPLATFORM maven:3.9.11-eclipse-temurin-25 AS build
 
 # Set the working directory
 WORKDIR /app
