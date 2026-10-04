@@ -1,5 +1,6 @@
 package my.poo.mtgcrawl.mtgprint.entitiy;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.hibernate.annotations.JdbcType;
@@ -45,6 +46,10 @@ public class ApiConfig {
 
     @Column
     private String officialWebsite;
+
+    // Letzte Suche oder Bearbeitung. ApiConfigCleanupService löscht User-Configs, die zu lange unbenutzt sind
+    @Column
+    private LocalDateTime lastUsed;
 
     // Request
     @Column
@@ -92,9 +97,9 @@ public class ApiConfig {
     private String imageUrlField;
     @Column
     private String languageField;
-    // Karten ohne Sprachangabe im Frontend als Englisch markieren
+    // Sprache (ISO-639-1) für Karten ohne Sprachangabe, z. B. "en"
     @Column
-    private Boolean assumeEnglish;
+    private String defaultLanguage;
     @Column
     private String setField;
     @Column
@@ -117,4 +122,12 @@ public class ApiConfig {
     private String nestedLanguageImageUrlField;
     @Column
     private String nestedLanguageLanguageField;
+
+    // Mehrseitige Karten (z.B. Scryfall card_faces): jede Seite mit Bild wird ein eigener Treffer
+    @Column
+    private String cardFacesDataListField;
+    @Column
+    private String cardFacesImageUrlField;
+    @Column
+    private String cardFacesNameField;
 }

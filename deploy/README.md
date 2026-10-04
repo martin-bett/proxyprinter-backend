@@ -97,3 +97,25 @@ Token an. Wer auf dem VPS selbst `docker compose pull` ausführen will, braucht 
 
 Alte Images bleiben auf dem VPS liegen, damit ein Rollback ohne Download geht.
 Gelegentlich aufräumen: `docker image prune -a --filter "until=720h"`.
+
+## Datenbank-Migrationen
+
+Die Datenbank wird nicht von Hibernate angepasst. Neue Spalten und Daten kommen als SQL-Skripte nach
+`src/main/resources/sql/` (Dateiname mit Datum vorne, z. B. `2026-10-04_api_config_card_faces.sql`).
+
+- **Server:** Der Backend-Deploy spielt vor dem Neustart jedes neue Skript genau einmal ein
+  (`.github/deploy/remote-migrate.sh`, per `psql` im Postgres-Container) und merkt sich das in
+  `proxymaster.schema_migration`. Schlägt ein Skript fehl, bricht der Deploy ab und das alte Backend läuft weiter.
+  Beim Rollback auf einen alten Tag laufen keine Migrationen. Der Postgres-Service wird am Image erkannt,
+  sonst `DB_SERVICE=<service>` in die `.env` schreiben.
+- **Lokal:** nach `git pull` unter Windows `db-update-local.cmd` doppelklicken oder in VS Code
+  *Terminal → Run Task → DB lokal aktualisieren* (Container `proxymaster`, anderer Name als Parameter).
+  Von Hand (`<container>` = Name aus `docker ps`):
+
+  ```
+  cat src/main/resources/sql/*.sql | docker exec -i <container> sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${POSTGRES_DB:-$POSTGRES_USER}"'
+  ```
+
+**Jedes Skript muss beliebig oft laufen dürfen** (`ADD COLUMN IF NOT EXISTS`, `INSERT ... WHERE NOT EXISTS`,
+`UPDATE` mit festen Werten), denn lokal läuft immer alles und beim ersten Server-Lauf war unbekannt,
+was schon von Hand eingespielt wurde.

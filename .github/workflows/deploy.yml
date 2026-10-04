@@ -62,16 +62,13 @@ jobs:
       packages: read
     steps:
       - uses: actions/checkout@v4
-      - name: Auf VPS ausrollen
+      - name: SSH vorbereiten
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
-          VPS_PORT: ${{ secrets.VPS_PORT }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
           VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/proxyprinter' }}
           NEW_TAG: ${{ needs.build.outputs.tag || inputs.tag }}
-          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           for v in VPS_HOST VPS_USER VPS_SSH_KEY VPS_KNOWN_HOSTS NEW_TAG; do
@@ -80,6 +77,32 @@ jobs:
           install -m 700 -d ~/.ssh
           printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
           printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      # Neue SQL-Skripte aus src/main/resources/sql vor dem Neustart einspielen (nicht beim Rollback auf einen alten Tag)
+      - name: Datenbank-Migrationen
+        if: github.event_name == 'push' || inputs.tag == ''
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/proxyprinter' }}
+        run: |
+          set -euo pipefail
+          {
+            printf 'export DEPLOY_PATH=%q\n' "$DEPLOY_PATH"
+            cat .github/deploy/remote-migrate.sh
+            bash .github/deploy/build-migrations.sh src/main/resources/sql
+          } | ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" -o StrictHostKeyChecking=yes \
+                "$VPS_USER@$VPS_HOST" 'f=$(mktemp) && cat > "$f" && bash "$f" < /dev/null; rc=$?; rm -f "$f"; exit $rc'
+      - name: Auf VPS ausrollen
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '/opt/proxyprinter' }}
+          NEW_TAG: ${{ needs.build.outputs.tag || inputs.tag }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
           {
             printf 'export DEPLOY_PATH=%q SERVICE=backend TAG_VAR=BACKEND_TAG NEW_TAG=%q\n' "$DEPLOY_PATH" "$NEW_TAG"
             printf 'export GHCR_USER=%q GHCR_TOKEN=%q\n' "$GITHUB_ACTOR" "$GHCR_TOKEN"

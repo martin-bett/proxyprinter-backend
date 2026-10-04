@@ -40,7 +40,7 @@ public class ApiConfigDto {
     private String nameSplitCharacter;
     private String imageUrlField;
     private String languageField;
-    private Boolean assumeEnglish;
+    private String defaultLanguage;
     private String setField;
     private String setNumberField;
     private String paginationLinkField;
@@ -56,4 +56,9 @@ public class ApiConfigDto {
     private String nestedLanguageDataListField;
     private String nestedLanguageImageUrlField;
     private String nestedLanguageLanguageField;
+
+    // Mehrseitige Karten
+    private String cardFacesDataListField;
+    private String cardFacesImageUrlField;
+    private String cardFacesNameField;
 }
