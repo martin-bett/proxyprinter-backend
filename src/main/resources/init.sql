@@ -79,6 +79,7 @@ CREATE TABLE proxymaster.api_config (
 	published bool DEFAULT false NOT NULL,
 	pagination_max_page_field varchar(255) NULL,
 	proxy_images bool NULL,
+	last_used timestamp NULL,
 	card_faces_data_list_field varchar(255) NULL,
 	card_faces_image_url_field varchar(255) NULL,
 	card_faces_name_field varchar(255) NULL,

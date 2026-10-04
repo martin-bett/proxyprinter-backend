@@ -25,6 +25,7 @@ public interface ApiConfigMapper {
 
     @Mapping(target = "parameterMap", expression = "java(mapMapToParameters(dto.getParameterMap()))")
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
+    @Mapping(target = "lastUsed", ignore = true)
     ApiConfig toEntity(ApiConfigDto dto);
 
     default Map<String, Map<String, String>> mapParametersToMap(List<ApiConfigParameter> parameters) {
