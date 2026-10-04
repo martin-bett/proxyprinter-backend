@@ -69,6 +69,12 @@ public class ApiConfigController{
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/used")
+    public ResponseEntity<?> markUsed(@RequestBody List<Long> configIds) {
+        apiConfigService.markUsed(configIds);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/publish")
     public ResponseEntity<Long> publishConfig(
             @RequestBody ApiConfigDto request,

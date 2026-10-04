@@ -1,5 +1,6 @@
 package my.poo.mtgcrawl.mtgprint.entitiy;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.hibernate.annotations.JdbcType;
@@ -45,6 +46,10 @@ public class ApiConfig {
 
     @Column
     private String officialWebsite;
+
+    // Letzte Suche oder Bearbeitung. ApiConfigCleanupService löscht User-Configs, die zu lange unbenutzt sind
+    @Column
+    private LocalDateTime lastUsed;
 
     // Request
     @Column
