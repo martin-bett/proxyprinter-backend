@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
+import my.poo.mtgcrawl.mtgprint.service.rest.ImageFetchService;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -32,6 +33,7 @@ public class ProxyController {
     private final RestTemplate restTemplate;
     private final FileDownloadService fileDownloadService;
     private final HashService hashService;
+    private final ImageFetchService imageFetchService;
 
     @GetMapping("/ping")
     public Boolean ping() {
@@ -150,28 +152,28 @@ public class ProxyController {
             } catch (Exception e) {
                 return ResponseEntity.internalServerError().build();
             }
-        } else {
-            HttpHeaders headers = new HttpHeaders();
-            headers.setAccept(Arrays.asList(MediaType.IMAGE_JPEG, MediaType.IMAGE_PNG, MediaType.ALL));
-            HttpEntity<?> entity = new HttpEntity<>(headers);
-            try {
-                ResponseEntity<byte[]> response = restTemplate.exchange(targetUrl, HttpMethod.GET, entity, byte[].class);
-                if (response.getStatusCode().is3xxRedirection() && response.getHeaders().getLocation() != null) {
-                    String redirectUrl = response.getHeaders().getLocation().toString();
-                    response = restTemplate.exchange(redirectUrl, HttpMethod.GET, entity, byte[].class);
-                }
-                byte[] fileContent = response.getBody();
-                if (!response.getStatusCode().is2xxSuccessful() || fileContent == null || fileContent.length == 0) {
-                    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).headers(responseHeaders).build();
-                }
-                fileDownloadService.saveByteArray(fileContent,fileName);
-                responseHeaders.setContentType(response.getHeaders().getContentType());
-                return new ResponseEntity<>(fileContent, responseHeaders, HttpStatus.OK);
-            } catch (Exception e) {
-                log.warn("Bild konnte nicht geladen werden: {} ({})", targetUrl, e.getMessage());
-                return ResponseEntity.status(HttpStatus.BAD_GATEWAY).headers(responseHeaders).build();
-            }
         }
+
+        // Schon gescheitert: nicht erneut bei der Quelle anfragen
+        ImageFetchService.Failure failure = imageFetchService.recentFailure(targetUrl);
+        if (failure != null) {
+            return imageError(responseHeaders, failure.reason());
+        }
+        try {
+            ImageFetchService.Image image = imageFetchService.fetch(targetUrl);
+            fileDownloadService.saveByteArray(image.content(), fileName);
+            responseHeaders.setContentType(MediaType.parseMediaType(image.contentType()));
+            return new ResponseEntity<>(image.content(), responseHeaders, HttpStatus.OK);
+        } catch (ImageFetchService.ImageFetchException e) {
+            return imageError(responseHeaders, e.getMessage());
+        }
+    }
+
+    private ResponseEntity<byte[]> imageError(HttpHeaders headers, String reason) {
+        // Grund für das Frontend; Header-Werte müssen ASCII sein
+        headers.set("X-Proxy-Error", reason.replaceAll("[^\\x20-\\x7E]", "?"));
+        headers.setAccessControlExposeHeaders(java.util.List.of("X-Proxy-Error"));
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).headers(headers).build();
     }
 
     @GetMapping("/csrf-token")
