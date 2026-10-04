@@ -48,7 +48,7 @@ healthy() {
   [ -n "$cid" ] || return 1
   [ "$(docker inspect -f '{{.State.Running}}' "$cid")" = "true" ] || return 1
   if [ -n "${HEALTH_URL:-}" ]; then
-    docker compose exec -T frontend wget -q -O /dev/null -T 5 "$HEALTH_URL" || return 1
+    docker compose exec -T frontend wget -q -O /dev/null -T 5 "$HEALTH_URL" 2>/dev/null || return 1
   fi
 }
 
