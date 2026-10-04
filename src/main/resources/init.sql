@@ -42,6 +42,7 @@ CREATE TABLE proxymaster.gallery_config (
 	"method" varchar(255) NULL,
 	request_format varchar(255) NULL,
 	use_backend_proxy bool NULL,
+	default_language varchar(16) NULL,
 	CONSTRAINT gallery_config_pkey PRIMARY KEY (id)
 );
 
@@ -83,6 +84,7 @@ CREATE TABLE proxymaster.api_config (
 	card_faces_data_list_field varchar(255) NULL,
 	card_faces_image_url_field varchar(255) NULL,
 	card_faces_name_field varchar(255) NULL,
+	default_language varchar(16) NULL,
 	CONSTRAINT api_config_pkey PRIMARY KEY (id)
 );
 

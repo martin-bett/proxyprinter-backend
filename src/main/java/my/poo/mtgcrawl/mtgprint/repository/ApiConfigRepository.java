@@ -44,7 +44,7 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
                     set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field,
                     follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field,
                     nested_language_language_field, ip_address, browser_fingerprint, published, proxy_images, last_used,
-                    card_faces_data_list_field, card_faces_image_url_field, card_faces_name_field
+                    card_faces_data_list_field, card_faces_image_url_field, card_faces_name_field, default_language
                 )
                 SELECT category, official_website, name || '_copy', custom_arts, method, request_format, base_url,
                        concurrent_limit, data_format,pagination_max_page_field, pagination_link_field, csrf_token_variable_name, requires_csrf_token,
@@ -52,7 +52,7 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
                        language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field,
                        follow_link_image_field, follow_link_language_field, nested_language_data_list_field,
                        nested_language_image_url_field, nested_language_language_field, :ipAddress, :browserFingerprint, FALSE, proxy_images, now(),
-                       card_faces_data_list_field, card_faces_image_url_field, card_faces_name_field
+                       card_faces_data_list_field, card_faces_image_url_field, card_faces_name_field, default_language
                 FROM proxymaster.api_config
                 WHERE id = :id
                 RETURNING id

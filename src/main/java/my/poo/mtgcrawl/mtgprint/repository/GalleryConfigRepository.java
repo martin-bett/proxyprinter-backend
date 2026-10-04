@@ -35,11 +35,11 @@ public interface GalleryConfigRepository extends JpaRepository<GalleryConfig, Lo
                 INSERT INTO proxymaster.gallery_config (
                     category, official_website, name,  method, request_format, base_url, 
                     data_format, pagination_field, use_backend_proxy, data_list_field, name_field,  image_url_field,
-                     ip_address, browser_fingerprint, published
+                     ip_address, browser_fingerprint, published, default_language
                 )
                 SELECT category, official_website, name || '_copy',  method, request_format, base_url,
                         data_format, pagination_field, use_backend_proxy, data_list_field, name_field,  image_url_field,
-                        :ipAddress, :browserFingerprint, FALSE
+                        :ipAddress, :browserFingerprint, FALSE, default_language
                 FROM proxymaster.gallery_config
                 WHERE id = :id
                 RETURNING id

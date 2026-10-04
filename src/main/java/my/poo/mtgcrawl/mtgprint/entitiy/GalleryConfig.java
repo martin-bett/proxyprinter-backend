@@ -70,5 +70,8 @@ public class GalleryConfig {
     private String nameField;
     @Column
     private String imageUrlField;
+    // Sprache (ISO-639-1) für alle Bilder dieser Gallery, z. B. "de"
+    @Column
+    private String defaultLanguage;
 
 }

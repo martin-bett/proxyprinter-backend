@@ -97,6 +97,9 @@ public class ApiConfig {
     private String imageUrlField;
     @Column
     private String languageField;
+    // Sprache (ISO-639-1) für Karten ohne Sprachangabe, z. B. "en"
+    @Column
+    private String defaultLanguage;
     @Column
     private String setField;
     @Column
