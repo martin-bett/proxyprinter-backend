@@ -2,7 +2,9 @@ package my.poo.mtgcrawl.mtgprint.service.rest;
 
 
 import org.springframework.stereotype.Service;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfig;
@@ -35,6 +37,15 @@ public class ApiConfigService {
         }
     }
 
+    // Frontend meldet die Configs einer Suche, damit sie nicht als unbenutzt gelöscht werden
+    public void markUsed(List<Long> ids) {
+        if (ids == null) return;
+        List<Long> valid = ids.stream().filter(Objects::nonNull).distinct().limit(200).toList();
+        if (!valid.isEmpty()) {
+            apiConfigRepository.markUsed(valid);
+        }
+    }
+
     public boolean checkVisitorIdentifier(ApiConfig config, VisitorIdentifier visitorIdentifier) {
         return visitorIdentifier != null && visitorIdentifier.equals(config.getVisitorIdentifier());
     }
@@ -44,6 +55,7 @@ public class ApiConfigService {
         if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
             ApiConfig config = mapper.toEntity(request);
             config.setVisitorIdentifier(visitorIdentifier);
+            config.setLastUsed(LocalDateTime.now());
             return apiConfigRepository.save(config).getId();
         }
         return null;
@@ -53,6 +65,7 @@ public class ApiConfigService {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
         if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
             old.setPublished(request.getPublished());
+            old.setLastUsed(LocalDateTime.now());
             apiConfigRepository.save(old);
             return old.getId();
         } else {
