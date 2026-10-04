@@ -1,0 +1,62 @@
+# Vorlage für den VPS: nach $DEPLOY_PATH (Standard /opt/proxyprinter) kopieren, zusammen mit
+# proxy-nginx.conf und einer .env (siehe .env.example). Die GitHub Actions setzen in der .env
+# nur BACKEND_TAG / FRONTEND_TAG (+ *_PREVIOUS für den Rollback) und starten den jeweiligen Service neu.
+name: proxyprinter
+
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mtguser
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD in .env setzen}
+      POSTGRES_DB: proxymaster
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mtguser -d proxymaster"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ghcr.io/martin-bett/mtgprint-backend:${BACKEND_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/proxymaster
+      SPRING_DATASOURCE_USERNAME: mtguser
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD}
+      GALLERY_GOOGLE_APIKEY: ${GALLERY_GOOGLE_APIKEY:-}
+      GALLERY_REDDIT_CLIENTID: ${GALLERY_REDDIT_CLIENTID:-}
+      GALLERY_REDDIT_CLIENTSECRET: ${GALLERY_REDDIT_CLIENTSECRET:-}
+      JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_OPTS:--Xmx1g}
+    volumes:
+      - backend-img:/app/img
+      - backend-pdf:/app/pdf
+
+  frontend:
+    image: ghcr.io/martin-bett/mtgprint-frontend:${FRONTEND_TAG:-latest}
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  proxy:
+    image: nginx:alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./proxy-nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
+
+volumes:
+  db-data:
+  backend-img:
+  backend-pdf:
