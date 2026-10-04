@@ -1,0 +1,98 @@
+Mainboard
+1 Animate Dead
+1 Arid Mesa
+1 Ashnod's Altar
+1 Assassin's Trophy
+1 Atsushi, the Blazing Sky
+1 Beast Within
+1 Big Score
+1 Birds of Paradise
+1 Blasphemous Act
+1 Blightstep Pathway // Searstep Pathway
+1 Blood Crypt
+1 Bloodstained Mire
+1 Bojuka Bog
+1 Bolt Bend
+1 Bonehoard Dracosaur
+1 Brass's Bounty
+1 Breeches, Eager Pillager
+1 Cankerbloom
+1 Captain Lannery Storm
+1 Chandra's Ignition
+1 Chatterfang, Squirrel General
+1 Cinder Glade
+1 Command Tower
+1 Crux of Fate
+1 Cultivate
+1 Deadly Dispute
+1 Deathcap Glade
+1 Deflecting Swat
+1 Demonic Tutor
+1 Disciple of the Vault
+1 Dockside Extortionist
+1 Dragonskull Summit
+1 Elves of Deep Shadow
+1 Eternal Witness
+3 Forest
+1 Fyndhorn Elves
+1 Gamble
+1 Goldspan Dragon
+1 Greedy Freebooter
+1 Grim Hireling
+1 Haunted Ridge
+1 Heroic Intervention
+1 Ignoble Hierarch
+1 Imperial Recruiter
+1 Impulsive Pilferer
+1 Jeska's Will
+1 Korvold, Fae-Cursed King
+1 Lightning Greaves
+1 Llanowar Elves
+1 Luxury Suite
+1 Magda, Brazen Outlaw
+1 Malakir Rebirth // Malakir Mire
+1 Mana Confluence
+1 Marionette Master
+1 Marsh Flats
+1 Mayhem Devil
+2 Mountain
+1 Nadier's Nightblade
+1 Nature's Claim
+1 Nature's Lore
+1 Not Dead After All
+1 Old Gnawbone
+1 Overgrown Tomb
+1 Pitiless Plunderer
+1 Polluted Delta
+1 Professional Face-Breaker
+1 Prossh, Skyraider of Kher
+1 Reckless Fireweaver
+1 Reliquary Tower
+1 Rootbound Crag
+1 Smoldering Marsh
+1 Sol Ring
+1 Spire Garden
+1 Stomping Ground
+1 Storm-Kiln Artist
+2 Swamp
+1 Terminate
+1 The Reaver Cleaver
+1 Three Visits
+1 Tibalt's Trickery
+1 Tireless Provisioner
+1 Treasure Vault
+1 Undergrowth Stadium
+1 Unearth
+1 Vampiric Tutor
+1 Vat of Rebirth
+1 Verdant Catacombs
+1 Victimize
+1 Viscera Seer
+1 Wheel of Misfortune
+1 Wooded Foothills
+1 Woodland Cemetery
+1 Woodland Chasm
+1 Yavimaya, Cradle of Growth
+1 Ziatora's Proving Ground
+1 Ziatora, the Incinerator
+
