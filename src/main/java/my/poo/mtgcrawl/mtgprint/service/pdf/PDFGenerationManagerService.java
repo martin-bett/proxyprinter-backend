@@ -37,6 +37,7 @@ public class PDFGenerationManagerService {
 
     private final PDFGenerationService pdfGenerationService;
     private final PdfCacheService pdfCacheService;
+    private final PdfMailNotifier mailNotifier;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final int maxConcurrent;
     private final ExecutorService executor;
@@ -46,18 +47,23 @@ public class PDFGenerationManagerService {
     private int activeJobs = 0;
 
     public PDFGenerationManagerService(PDFGenerationService pdfGenerationService, PdfCacheService pdfCacheService,
-            @Value("${pdf.max-concurrent:2}") int maxConcurrent) {
+            PdfMailNotifier mailNotifier, @Value("${pdf.max-concurrent:2}") int maxConcurrent) {
         this.pdfGenerationService = pdfGenerationService;
         this.pdfCacheService = pdfCacheService;
+        this.mailNotifier = mailNotifier;
         this.maxConcurrent = Math.max(1, maxConcurrent);
         this.executor = Executors.newFixedThreadPool(this.maxConcurrent);
     }
 
     public synchronized String submitJob(CreatePdfDto request) {
         String progressId = computeRequestHash(request);
+        String email = request.getEmail();
 
         PdfJob existing = allJobs.get(progressId);
         if (existing != null && existing.status != JobStatus.FINISHED) {
+            if (email != null) {
+                existing.emailRecipients.add(email);
+            }
             return progressId;
         }
 
@@ -70,9 +76,15 @@ public class PDFGenerationManagerService {
             dto.setFileSize(cachedPdf.length);
             job.sendProgress(dto);
             job.setStatus(JobStatus.FINISHED);
+            if (email != null) {
+                mailNotifier.sendReady(email, progressId, cachedPdf.length);
+            }
             return progressId;
         }
 
+        if (email != null) {
+            job.emailRecipients.add(email);
+        }
         queue.addLast(job);
         sendQueuePositions();
         startNextIfPossible();
@@ -93,6 +105,8 @@ public class PDFGenerationManagerService {
         executor.submit(() -> {
             try {
                 pdfGenerationService.generateDocument(job);
+                long fileSize = job.progressHistory.isEmpty() ? 0 : last(job.progressHistory).getFileSize();
+                job.emailRecipients.forEach(to -> mailNotifier.sendReady(to, job.progressId, fileSize));
             } catch (Throwable e) {
                 if (e instanceof PdfSizeLimit.PdfTooLargeException) {
                     log.info("PDF " + job.progressId + " rejected: " + e.getMessage());
@@ -102,6 +116,7 @@ public class PDFGenerationManagerService {
                 ProgressDto errorDto = ProgressDto.of(job.progressId, Category.finishing, "Error: " + e.getMessage(), 0, 0);
                 errorDto.setError(true);
                 job.sendProgress(errorDto);
+                job.emailRecipients.forEach(to -> mailNotifier.sendFailed(to, e.getMessage()));
             } finally {
                 job.setStatus(JobStatus.FINISHED);
                 synchronized (this) {
@@ -120,12 +135,15 @@ public class PDFGenerationManagerService {
             ProgressDto dto = ProgressDto.of(job.progressId, Category.queued,
                     "Waiting in queue (" + position + " of " + size + ")", position, size);
             List<ProgressDto> history = job.progressHistory;
-            ProgressDto last = history.isEmpty() ? null : history.get(history.size() - 1);
-            if (last == null || !dto.equals(last)) {
+            if (history.isEmpty() || !dto.equals(last(history))) {
                 job.sendProgress(dto);
             }
             position++;
         }
+    }
+
+    private static ProgressDto last(List<ProgressDto> history) {
+        return history.get(history.size() - 1);
     }
 
     public List<ProgressDto> getProgressHistory(String progressId) {
@@ -157,9 +175,13 @@ public class PDFGenerationManagerService {
         executor.shutdownNow();
     }
 
+    /** Die E-Mail-Adresse zählt nicht mit, damit dasselbe Deck nicht für jeden Empfänger neu gebaut wird. */
     private String computeRequestHash(CreatePdfDto dto) {
         try {
-            String json = objectMapper.writeValueAsString(dto);
+            CreatePdfDto content = new CreatePdfDto();
+            content.setImages(dto.getImages());
+            content.setSettings(dto.getSettings());
+            String json = objectMapper.writeValueAsString(content);
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(json.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (Exception e) {

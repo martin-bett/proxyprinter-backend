@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
+import my.poo.mtgcrawl.mtgprint.service.mail.MailService;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PDFGenerationManagerService;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PdfCacheService;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PdfSizeLimit;
@@ -22,23 +23,33 @@ public class PdfController {
     private final PDFGenerationManagerService pdfGenerationManagerService;
     private final PdfCacheService pdfCacheService;
     private final PdfSizeLimit pdfSizeLimit;
+    private final MailService mailService;
 
     public PdfController(PDFGenerationManagerService pdfGenerationManagerService, PdfCacheService pdfCacheService,
-            PdfSizeLimit pdfSizeLimit) {
+            PdfSizeLimit pdfSizeLimit, MailService mailService) {
         this.pdfGenerationManagerService = pdfGenerationManagerService;
         this.pdfCacheService = pdfCacheService;
         this.pdfSizeLimit = pdfSizeLimit;
+        this.mailService = mailService;
     }
 
-    /** Grenzen, die das Frontend vor dem Anfordern prüft. */
+    /** Grenzen und Optionen, die das Frontend vor dem Anfordern prüft. */
     @GetMapping("/pdf/limits")
-    public Map<String, Long> getLimits() {
-        return Map.of("maxSizeMb", pdfSizeLimit.getMaxSizeMb());
+    public Map<String, Object> getLimits() {
+        return Map.of("maxSizeMb", pdfSizeLimit.getMaxSizeMb(), "mailEnabled", mailService.isEnabled());
     }
 
     @CrossOrigin
     @PostMapping("/pdf")
     public ResponseEntity<String> startPdfGeneration(@RequestBody CreatePdfDto request) {
+        String email = request.getEmail() == null ? null : request.getEmail().trim();
+        if (email != null && email.isEmpty()) {
+            email = null;
+        }
+        if (email != null && !MailService.isValidAddress(email)) {
+            return ResponseEntity.badRequest().body("Invalid email address");
+        }
+        request.setEmail(email);
         return ResponseEntity.ok(pdfGenerationManagerService.submitJob(request));
     }
 
