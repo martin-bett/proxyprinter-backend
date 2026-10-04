@@ -22,7 +22,7 @@ db_psql() {
     'psql -X -q -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "${POSTGRES_DB:-$POSTGRES_USER}" "$@"' psql "$@"
 }
 
-db_psql -c "CREATE TABLE IF NOT EXISTS proxymaster.schema_migration (
+db_psql -c "SET client_min_messages = warning; CREATE TABLE IF NOT EXISTS proxymaster.schema_migration (
   filename varchar(255) PRIMARY KEY,
   applied_at timestamp NOT NULL DEFAULT now()
 );"
