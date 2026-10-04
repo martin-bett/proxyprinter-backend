@@ -41,7 +41,7 @@ class PDFGenerationManagerServiceTest {
             return null;
         }).when(generation).generateDocument(any());
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, 1);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), 1);
         try {
             String first = manager.submitJob(request("a"));
             String second = manager.submitJob(request("b"));
@@ -69,7 +69,7 @@ class PDFGenerationManagerServiceTest {
         PdfCacheService cache = mock(PdfCacheService.class);
         when(cache.getFromCache(any())).thenReturn(new byte[] { 1, 2, 3 });
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, 2);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), 2);
         try {
             String id = manager.submitJob(request("a"));
             ProgressDto dto = last(manager.getProgressHistory(id));
@@ -88,7 +88,7 @@ class PDFGenerationManagerServiceTest {
         PdfCacheService cache = mock(PdfCacheService.class);
         doThrow(new IllegalStateException("boom")).when(generation).generateDocument(any());
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, 1);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), 1);
         try {
             String id = manager.submitJob(request("a"));
             ProgressDto dto = null;
@@ -99,6 +99,66 @@ class PDFGenerationManagerServiceTest {
             }
             assertTrue(dto.isError());
             assertEquals("Error: boom", dto.getMessage());
+        } finally {
+            manager.shutdown();
+        }
+    }
+
+    @Test
+    void mailsDownloadLinkToEveryRecipientWithoutRebuilding() throws Exception {
+        PDFGenerationService generation = mock(PDFGenerationService.class);
+        PdfCacheService cache = mock(PdfCacheService.class);
+        PdfMailNotifier mail = mock(PdfMailNotifier.class);
+        CountDownLatch release = new CountDownLatch(1);
+        doAnswer(inv -> {
+            release.await(5, TimeUnit.SECONDS);
+            PdfJob job = inv.getArgument(0);
+            ProgressDto done = ProgressDto.of(job.progressId, Category.finishing, "PDF compilation completed", 1, 1);
+            done.setFileSize(42);
+            job.sendProgress(done);
+            return null;
+        }).when(generation).generateDocument(any());
+
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mail, 1);
+        try {
+            CreatePdfDto first = request("a");
+            first.setEmail("one@example.com");
+            CreatePdfDto second = request("a");
+            second.setEmail("two@example.com");
+
+            String id = manager.submitJob(first);
+            assertEquals(id, manager.submitJob(second), "email must not change the progress id");
+            assertEquals(id, manager.submitJob(request("a")));
+
+            release.countDown();
+            verify(mail, timeout(5000)).sendReady("one@example.com", id, 42);
+            verify(mail, timeout(5000)).sendReady("two@example.com", id, 42);
+            verify(generation, times(1)).generateDocument(any());
+            verify(mail, never()).sendFailed(any(), any());
+        } finally {
+            manager.shutdown();
+        }
+    }
+
+    @Test
+    void mailsFailureAndCachedPdfs() throws Exception {
+        PDFGenerationService generation = mock(PDFGenerationService.class);
+        PdfCacheService cache = mock(PdfCacheService.class);
+        PdfMailNotifier mail = mock(PdfMailNotifier.class);
+        doThrow(new IllegalStateException("boom")).when(generation).generateDocument(any());
+
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mail, 1);
+        try {
+            CreatePdfDto failing = request("a");
+            failing.setEmail("one@example.com");
+            manager.submitJob(failing);
+            verify(mail, timeout(5000)).sendFailed("one@example.com", "boom");
+
+            when(cache.getFromCache(any())).thenReturn(new byte[] { 1, 2, 3 });
+            CreatePdfDto cached = request("b");
+            cached.setEmail("two@example.com");
+            String id = manager.submitJob(cached);
+            verify(mail).sendReady("two@example.com", id, 3);
         } finally {
             manager.shutdown();
         }

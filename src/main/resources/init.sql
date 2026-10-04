@@ -108,8 +108,8 @@ INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(2, 'MTG'::proxymaster."api_category", 'https://www.mtgdatabase.com/de/search/', 'manala', false, 'POST', 'multipart', 'https://www.mtgdatabase.com/en/search/', 5, 'html', NULL, 'search[csrf_token]', false, true, 'div#list_cards_layout_2 table.dataTable tbody tr', 'td.details-col div:nth-child(1) a | innerText', NULL, 'td.img-col img | attr:src', NULL, 'td.details-col div:nth-child(2) a | innerText', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);
 INSERT INTO proxymaster.api_config
-(id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
-VALUES(3, 'MTG'::proxymaster."api_category", 'https://gatherer.wizards.com/Pages/Default.aspx', 'mtggatherer', false, 'GET', NULL, 'https://api.magicthegathering.io/v1/cards', 5, 'json', NULL, NULL, NULL, false, 'cards', 'name', NULL, 'imageUrl', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'foreignNames', 'imageUrl', 'language', NULL, NULL, true, NULL);
+(id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field, proxy_images)
+VALUES(3, 'MTG'::proxymaster."api_category", 'https://gatherer.wizards.com/', 'mtggatherer', false, 'GET', NULL, 'https://api.magicthegathering.io/v1/cards', 3, 'json', NULL, NULL, NULL, false, 'cards', 'name', '//', 'imageUrl', NULL, 'setName', 'number', NULL, NULL, NULL, NULL, 'foreignNames', 'imageUrl', 'language', NULL, NULL, true, NULL, true);
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(4, 'MTG'::proxymaster."api_category", 'https://mtgcardbuilder.com/', 'mtgbuilder', true, 'POST', NULL, 'https://mtgcardbuilder.com/wp-admin/admin-ajax.php', 5, 'json', NULL, NULL, NULL, false, 'data', 'search_card_name', NULL, 'image_url', NULL, 'card_edition', 'id', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, 'total');
@@ -158,7 +158,7 @@ INSERT INTO proxymaster.api_config_parameter
 VALUES(7, 2, 'search[name_begins]', 'on', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
-VALUES(8, 3, 'name', '{cardname}', 'request');
+VALUES(8, 3, 'name', '"{cardname}"', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
 VALUES(9, 4, 'search', '{cardname}', 'request');
@@ -206,27 +206,6 @@ INSERT INTO proxymaster.api_config_parameter
 VALUES(26, 10, 'search', '{cardname}', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
-VALUES(27, 12, 'name', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(28, 18, 'search[name]', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(29, 18, 'search[name_begins]', 'on', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(30, 18, 'search[showduplicates]', 'on', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(31, 19, 'search[name]', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(32, 19, 'search[name_begins]', 'on', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(33, 19, 'search[showduplicates]', 'on', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
 VALUES(34, 6, 'include_variations', 'true', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
@@ -251,40 +230,10 @@ INSERT INTO proxymaster.api_config_parameter
 VALUES(41, 6, 'cpage', '{pageCount}', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
-VALUES(42, 20, 's', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(43, 21, 'name', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(44, 22, 'search[name]', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(45, 22, 'search[name_begins]', 'on', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(46, 22, 'search[showduplicates]', 'on', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(47, 23, 'include_multilingual', 'true', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(48, 23, 'include_variations', 'true', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(49, 23, 'q', '{cardname}', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(50, 23, 'unique', 'prints', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
 VALUES(17, 8, 'q', '{cardname}', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
 VALUES(16, 7, 'q', '!name:"{cardname}"', 'request');
-INSERT INTO proxymaster.api_config_parameter
-(id, config_id, "name", value, category)
-VALUES(51, 25, 's', '"{cardname}"', 'request');
 INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
 VALUES(52, 5, 'sort', 'date', 'request');
@@ -298,22 +247,44 @@ INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
 VALUES(15, 5, 's', '"{cardname}"', 'request');
 
+-- Weitere Kartenquellen (Recherche 2026-10-03). swudb ist ungeprüft und deshalb nicht veröffentlicht.
+INSERT INTO proxymaster.api_config
+(id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field, proxy_images)
+VALUES(18, 'YUGIOH'::proxymaster."api_category", 'https://ygoprodeck.com/', 'ygoprodeck', false, 'GET', NULL, 'https://db.ygoprodeck.com/api/v7/cardinfo.php', 2, 'json', NULL, NULL, NULL, false, 'data', 'name', NULL, 'card_images.0.image_url', NULL, 'card_sets.0.set_name', 'card_sets.0.set_code', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL, true);
+INSERT INTO proxymaster.api_config
+(id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field, proxy_images)
+VALUES(19, 'MISC'::proxymaster."api_category", 'https://lorcast.com/', 'lorcast', false, 'GET', NULL, 'https://api.lorcast.com/v0/cards/search', 2, 'json', NULL, NULL, NULL, false, 'results', 'name', NULL, 'image_uris.digital.large', 'lang', 'set.name', 'collector_number', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL, false);
+INSERT INTO proxymaster.api_config
+(id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field, proxy_images)
+VALUES(20, 'MISC'::proxymaster."api_category", 'https://www.swu-db.com/', 'swudb', false, 'GET', NULL, 'https://api.swu-db.com/cards/search', 2, 'json', NULL, NULL, NULL, false, 'data', 'Name', NULL, 'FrontArt', NULL, 'Set', 'Number', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, false, NULL, true);
+INSERT INTO proxymaster.api_config_parameter
+(id, config_id, "name", value, category)
+VALUES(55, 3, 'pageSize', '100', 'request');
+INSERT INTO proxymaster.api_config_parameter
+(id, config_id, "name", value, category)
+VALUES(56, 18, 'fname', '{cardname}', 'request');
+INSERT INTO proxymaster.api_config_parameter
+(id, config_id, "name", value, category)
+VALUES(57, 19, 'q', '{cardname}', 'request');
+INSERT INTO proxymaster.api_config_parameter
+(id, config_id, "name", value, category)
+VALUES(58, 20, 'q', '{cardname}', 'request');
+
+-- Galerie-Quellen laufen über das Backend (/api/gallery/source/...), das liefert {images:[{name,imageUrl}]}.
+-- Parameter "url" ohne Wert wird im Frontend zum Eingabefeld ($GALLERY_INPUT$).
 INSERT INTO proxymaster.gallery_config
 (id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy)
-VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', 'https://www.reddit.com/r/magicproxies/comments/1gwkskz/iron_fist_proxy_mockups_seeking_input/', 'html', 'img.media-lightbox-img | attr:data-lazy-srcset', 'img.media-lightbox-img | attr:data-lazy-srcset', 'gallery-carousel ul li ', NULL, NULL, NULL, NULL, false, 'GET', NULL, true);
+VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', '/api/gallery/source/reddit', 'json', 'imageUrl', 'name', 'images', NULL, 'https://www.reddit.com/r/magicproxies/', NULL, NULL, true, 'GET', NULL, false);
 INSERT INTO proxymaster.gallery_config
 (id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy)
-VALUES(2, 'MISC'::proxymaster."api_category", 'reddit_gallery', '$fullLink$', 'html', 'img.media-lightbox-img | attr:data-lazy-srcset', 'img.media-lightbox-img | attr:data-lazy-srcset', 'gallery-carousel ul li ', NULL, NULL, NULL, NULL, true, 'GET', NULL, true);
+VALUES(2, 'MISC'::proxymaster."api_category", 'google_drive', '/api/gallery/source/gdrive', 'json', 'imageUrl', 'name', 'images', NULL, 'https://drive.google.com/', NULL, NULL, true, 'GET', NULL, false);
 
 INSERT INTO proxymaster.gallery_config_parameter
 (id, gallery_id, "name", category, value)
-VALUES(1, 1, 'subreddit', 'url', NULL);
+VALUES(1, 1, 'url', 'request', NULL);
 INSERT INTO proxymaster.gallery_config_parameter
 (id, gallery_id, "name", category, value)
-VALUES(2, 1, 'id_comment', 'url', NULL);
-INSERT INTO proxymaster.gallery_config_parameter
-(id, gallery_id, "name", category, value)
-VALUES(3, 2, 'fullLink', 'url', NULL);
+VALUES(2, 2, 'url', 'request', NULL);
 
 
 -- Sequenzen hinter die festen IDs oben setzen, sonst scheitern Create/Copy

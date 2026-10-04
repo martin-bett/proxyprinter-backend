@@ -27,13 +27,15 @@ public class PDFGenerationService {
     private final FileDownloadService fileDownloadService;
     private final HashService hashService;
     private final PdfCacheService pdfCacheService;
+    private final PdfSizeLimit pdfSizeLimit;
 
     public PDFGenerationService(DocumentGenerator latexDocumentGenerator, FileDownloadService fileDownloadService,
-            HashService hashService, PdfCacheService pdfCacheService) {
+            HashService hashService, PdfCacheService pdfCacheService, PdfSizeLimit pdfSizeLimit) {
         this.latexDocumentGenerator = latexDocumentGenerator;
         this.fileDownloadService = fileDownloadService;
         this.hashService = hashService;
         this.pdfCacheService = pdfCacheService;
+        this.pdfSizeLimit = pdfSizeLimit;
     }
 
     public void generateDocument(PdfJob job) throws Exception {
@@ -81,6 +83,10 @@ public class PDFGenerationService {
             ProgressDto dto = ProgressDto.of(progressId, Category.download, message, i + 1, totalFiles);
             dto.setFileSize(totalFileSize);
             job.sendProgress(dto);
+
+            // Im PDF wird jede Karte als PNG eingebettet und damit eher größer als die Quelldatei:
+            // liegen schon die Downloads über der Grenze, lohnt das Bauen nicht
+            pdfSizeLimit.check(totalFileSize, i + 1, totalFiles);
         }
 
         job.sendProgress(ProgressDto.of(progressId, Category.build, "Starting PDF compilation", 0, processedImages.size()));

@@ -33,9 +33,11 @@ import java.io.IOException;
 public class DocumentGenerator {
 
     private final BufferedImageCacheService bufferedImageCacheService;
+    private final PdfSizeLimit pdfSizeLimit;
 
-    public DocumentGenerator(BufferedImageCacheService bufferedImageCacheService) {
+    public DocumentGenerator(BufferedImageCacheService bufferedImageCacheService, PdfSizeLimit pdfSizeLimit) {
         this.bufferedImageCacheService = bufferedImageCacheService;
+        this.pdfSizeLimit = pdfSizeLimit;
         ImageIO.scanForPlugins();
     }
 
@@ -76,6 +78,7 @@ public class DocumentGenerator {
             int placedCards = 0;
             int pageCount = 1;
             long accumulatedFileSize = 0;
+            long embeddedImageBytes = 0;
 
             for (ImageDto imagePath : imagePaths) {
                 if (cardCount >= cardsPerRow * cardsPerColumn) {
@@ -102,6 +105,9 @@ public class DocumentGenerator {
                 float y = startY - row * (cardHeight + vMargin);
 
                 PDImageXObject image = createImageForPDF(imagePath, document, properties);
+                // Bilder machen fast die ganze PDF-Größe aus, jede Kopie wird einzeln eingebettet
+                embeddedImageBytes += embeddedSize(image);
+                pdfSizeLimit.check(embeddedImageBytes, placedCards + 1, totalCards);
 
                 contentStream.drawImage(image, x, y, cardWidth, cardHeight);
                 log.debug("added image"+ imagePath.getImageUrl());
@@ -146,6 +152,15 @@ public class DocumentGenerator {
             log.debug("finished document "+ result.length/1000 +" KB");
             return result;
         }
+    }
+
+    private static long embeddedSize(PDImageXObject image) throws IOException {
+        long size = image.getCOSObject().getLength();
+        PDImageXObject softMask = image.getSoftMask();
+        if (softMask != null) {
+            size += softMask.getCOSObject().getLength();
+        }
+        return size;
     }
 
     public PDImageXObject createImageForPDF(ImageDto imagePath, PDDocument document, PdfProperties properties) throws IOException {
