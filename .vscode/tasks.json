@@ -1,0 +1,13 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // Terminal > Run Task > "DB lokal aktualisieren": spielt alle SQL-Skripte in die lokale Postgres ein
+            "label": "DB lokal aktualisieren",
+            "type": "shell",
+            "windows": { "command": "cmd /c db-update-local.cmd proxymaster" },
+            "command": "cat src/main/resources/sql/*.sql | docker exec -i proxymaster sh -c 'psql -v ON_ERROR_STOP=1 -U \"$POSTGRES_USER\" -d \"${POSTGRES_DB:-$POSTGRES_USER}\"'",
+            "problemMatcher": []
+        }
+    ]
+}

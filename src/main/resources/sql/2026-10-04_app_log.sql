@@ -1,4 +1,4 @@
--- Tabelle für die Backend-Logs (ab INFO), lesbar im DB-Viewer. Einmal auf der bestehenden Datenbank ausführen.
+-- Tabelle für die Backend-Logs (ab INFO), lesbar im DB-Viewer. Wiederholbar, läuft beim Deploy automatisch.
 -- Neueste zuerst: SELECT * FROM proxymaster.app_log ORDER BY logged_at DESC LIMIT 200;
 -- Nur Fehler:     SELECT * FROM proxymaster.app_log WHERE level IN ('WARN', 'ERROR') ORDER BY logged_at DESC;
 CREATE TABLE IF NOT EXISTS proxymaster.app_log (
