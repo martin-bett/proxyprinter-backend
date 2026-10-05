@@ -107,6 +107,19 @@ CREATE TABLE proxymaster.gallery_config_parameter (
 	CONSTRAINT gallery_config_parameter_gallery_id_name_key UNIQUE (gallery_id, name),
 	CONSTRAINT gallery_config_parameter_pkey PRIMARY KEY (id)
 );
+
+-- Backend-Logs ab INFO (DbLogService), Einträge älter als 30 Tage werden täglich gelöscht
+CREATE TABLE proxymaster.app_log (
+	id bigserial PRIMARY KEY,
+	logged_at timestamptz NOT NULL,
+	level varchar(5) NOT NULL,
+	logger varchar(255),
+	thread varchar(100),
+	message text,
+	exception text
+);
+CREATE INDEX app_log_logged_at_idx ON proxymaster.app_log (logged_at);
+
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(1, 'MTG'::proxymaster."api_category", 'https://aetherhub.com/', 'aetherhub', false, 'GET', NULL, 'https://aetherhub.com/Card/Search', 2, 'html', NULL, NULL, NULL, true, 'div#cards>div', 'div.item-hidden-text | innerText', NULL, 'img | attr:data-src', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);
