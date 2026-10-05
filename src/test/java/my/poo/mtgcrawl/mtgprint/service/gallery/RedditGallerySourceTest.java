@@ -98,4 +98,43 @@ class RedditGallerySourceTest {
                 () -> source.load("https://www.reddit.com/comments/1abcde"));
         assertTrue(e.getMessage().contains("403"));
     }
+
+    @Test
+    void readsPostJsonPastedFromBrowserWithoutCallingReddit() {
+        String pasted = "[{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t3\",\"data\":"
+                + "{\"title\":\"Mockups\",\"gallery_data\":{\"items\":[{\"media_id\":\"abc123\"}]},"
+                + "\"media_metadata\":{\"abc123\":{\"status\":\"valid\",\"e\":\"Image\",\"m\":\"image/png\"}}}}]}}]";
+
+        RedditGallerySource.RedditPost post = source.load("  " + pasted + "\n");
+
+        assertEquals("Mockups", post.result().title());
+        assertEquals("https://i.redd.it/abc123.png", post.result().images().get(0).imageUrl());
+        verifyNoInteractions(http);
+    }
+
+    @Test
+    void acceptsSingleListingObject() {
+        String pasted = "{\"kind\":\"Listing\",\"data\":{\"children\":[{\"kind\":\"t3\",\"data\":"
+                + "{\"title\":\"Single\",\"url\":\"https://i.redd.it/xyz.jpg\"}}]}}";
+
+        assertEquals("https://i.redd.it/xyz.jpg", source.load(pasted).result().images().get(0).imageUrl());
+    }
+
+    @Test
+    void rejectsBrokenPastedJson() {
+        GallerySourceException e = assertThrows(GallerySourceException.class, () -> source.load("[{\"kind\":"));
+        assertTrue(e.getMessage().contains("kein vollständiges Reddit-JSON"));
+    }
+
+    @Test
+    void turnsPastedPreviewLinksIntoOriginals() {
+        String pasted = "https://preview.redd.it/iron-fist-v0-abc123.png?width=640&format=png&auto=webp&s=x\n"
+                + "https://i.redd.it/def456.jpg\n"
+                + "https://preview.redd.it/iron-fist-v0-abc123.png?width=1080\n";
+
+        List<String> urls = source.load(pasted).result().images().stream().map(GalleryImage::imageUrl).toList();
+
+        assertEquals(List.of("https://i.redd.it/iron-fist-v0-abc123.png", "https://i.redd.it/def456.jpg"), urls);
+        verifyNoInteractions(http);
+    }
 }

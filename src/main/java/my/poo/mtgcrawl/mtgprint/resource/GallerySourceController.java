@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,7 +34,8 @@ public class GallerySourceController {
     private final RedditGallerySource reddit;
     private final GoogleDriveGallerySource googleDrive;
 
-    @GetMapping("/reddit")
+    /** POST, weil "url" auch den vom Browser kopierten Post (JSON) enthalten kann. */
+    @RequestMapping(path = "/reddit", method = { RequestMethod.GET, RequestMethod.POST })
     public GallerySourceResult reddit(@RequestParam("url") String url) {
         RedditGallerySource.RedditPost post = reddit.load(url);
         if (!post.result().images().isEmpty()) {

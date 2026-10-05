@@ -32,9 +32,13 @@ import lombok.extern.slf4j.Slf4j;
  * Post-ID herausziehen, /comments/{id}.json lesen und die Bilder aus
  * gallery_data + media_metadata (Galerie), url (Einzelbild) oder preview bauen.
  *
- * Ohne Zugangsdaten nutzt das den öffentlichen .json-Endpunkt (streng limitiert,
- * Server-IPs werden oft mit 403 abgewiesen). Mit gallery.reddit.clientid/-clientsecret
- * holt der Dienst ein App-Token und fragt oauth.reddit.com.
+ * Ohne Zugangsdaten nutzt das den öffentlichen .json-Endpunkt. Den sperrt Reddit seit 2026
+ * für Server praktisch immer (403). Mit gallery.reddit.clientid/-clientsecret holt der Dienst
+ * ein App-Token und fragt oauth.reddit.com; neue Reddit-Apps gibt es aber nur noch auf Antrag.
+ *
+ * Deshalb nimmt {@link #load(String)} statt eines Links auch Inhalt an, den der Browser des
+ * Nutzers von Reddit kopiert hat (das Lesezeichen "Reddit → Proxyprinter" im Frontend):
+ * das JSON des Posts oder eine Liste von Bildadressen (i.redd.it / preview.redd.it).
  */
 @Service
 @Slf4j
@@ -45,6 +49,8 @@ public class RedditGallerySource {
     private static final Pattern SHARE_LINK = Pattern.compile("/r/[^/]+/s/[A-Za-z0-9]+");
     private static final Pattern URL_IN_TEXT = Pattern.compile("https?://[^\\s)\\]>\"]+");
     private static final Set<String> IMAGE_HOSTS = Set.of("i.redd.it", "i.imgur.com");
+    private static final Pattern PREVIEW_IMAGE = Pattern.compile(
+            "https?://(?:preview|i)\\.redd\\.it/([^/?#\\s]+\\.(?:png|jpe?g|webp))", Pattern.CASE_INSENSITIVE);
 
     private final GalleryHttp http;
     private final ObjectMapper objectMapper;
@@ -70,10 +76,52 @@ public class RedditGallerySource {
     public record RedditPost(GallerySourceResult result, List<String> linkedUrls) {
     }
 
-    public RedditPost load(String link) {
-        String postId = resolvePostId(link);
+    public RedditPost load(String input) {
+        String trimmed = input == null ? "" : input.trim();
+        if (trimmed.startsWith("[") || trimmed.startsWith("{")) {
+            return parsePasted(trimmed);
+        }
+        List<GalleryImage> pastedImages = pastedImageUrls(trimmed);
+        if (!pastedImages.isEmpty()) {
+            return new RedditPost(new GallerySourceResult("reddit", "Reddit", pastedImages), List.of());
+        }
+        String postId = resolvePostId(trimmed);
         JsonNode listing = fetchPost(postId);
         return parse(listing);
+    }
+
+    // ---- Vom Browser kopierter Inhalt ---------------------------------------
+
+    /** JSON von /comments/{id}.json, als Array oder nur das erste Listing. */
+    RedditPost parsePasted(String json) {
+        JsonNode node;
+        try {
+            node = objectMapper.readTree(json);
+        } catch (Exception e) {
+            throw new GallerySourceException(HttpStatus.BAD_REQUEST,
+                    "Der eingefügte Text ist kein vollständiges Reddit-JSON. Bitte erneut kopieren.");
+        }
+        if (node.isObject()) {
+            node = objectMapper.createArrayNode().add(node);
+        }
+        return parse(node);
+    }
+
+    /**
+     * Bildadressen aus eingefügtem Text. preview.redd.it ist nur eine verkleinerte Kopie,
+     * dieselbe Datei liegt in voller Größe auf i.redd.it.
+     */
+    static List<GalleryImage> pastedImageUrls(String text) {
+        Set<String> files = new LinkedHashSet<>();
+        Matcher matcher = PREVIEW_IMAGE.matcher(text);
+        while (matcher.find()) {
+            files.add(matcher.group(1));
+        }
+        List<GalleryImage> images = new ArrayList<>();
+        for (String file : files) {
+            images.add(new GalleryImage("Reddit " + (images.size() + 1), "https://i.redd.it/" + file));
+        }
+        return images;
     }
 
     // ---- Link -> Post-ID ----------------------------------------------------
@@ -128,7 +176,8 @@ public class RedditGallerySource {
         if (status == 403 || status == 429) {
             log.warn("Reddit lehnt Abruf von {} ab: {}", postId, status);
             throw new GallerySourceException(HttpStatus.BAD_GATEWAY, "Reddit hat den Abruf abgelehnt (" + status + ")."
-                    + (hasCredentials() ? "" : " Ohne Reddit-App-Zugang sperrt Reddit Server oft; siehe gallery.reddit.clientid."));
+                    + (hasCredentials() ? "" : " Reddit sperrt Abrufe vom Server. Nutze das Lesezeichen"
+                            + " \"Reddit → Proxyprinter\" auf der Reddit-Seite und füge den kopierten Inhalt hier ein."));
         }
         if (status == 404) {
             throw new GallerySourceException(HttpStatus.NOT_FOUND, "Reddit-Post " + postId + " nicht gefunden");
