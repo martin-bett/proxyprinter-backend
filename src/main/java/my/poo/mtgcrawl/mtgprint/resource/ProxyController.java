@@ -12,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
+import my.poo.mtgcrawl.mtgprint.service.rest.ApiProbeService;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
 import my.poo.mtgcrawl.mtgprint.service.rest.ImageFetchService;
 
@@ -34,10 +35,17 @@ public class ProxyController {
     private final FileDownloadService fileDownloadService;
     private final HashService hashService;
     private final ImageFetchService imageFetchService;
+    private final ApiProbeService apiProbeService;
 
     @GetMapping("/ping")
     public Boolean ping() {
         return true;
+    }
+
+    /** Testabfrage des API-Wizards: liefert Status und Rohantwort, auch bei Fehlern. */
+    @PostMapping("/probe")
+    public ApiProbeService.ProbeResult probe(@RequestBody ApiProbeService.ProbeRequest probeRequest) {
+        return apiProbeService.probe(probeRequest);
     }
 
     @PostMapping
@@ -52,7 +60,7 @@ public class ProxyController {
 
         HttpEntity<?> requestEntity;
         HttpMethod httpMethod;
-        if ("post".equals(method)) {
+        if ("post".equalsIgnoreCase(method)) {
             httpMethod = HttpMethod.POST;
             if ("multipart".equals(requestFormat)) {
                 MultipartHttpServletRequest multipartRequest = (MultipartHttpServletRequest) request;
@@ -96,7 +104,8 @@ public class ProxyController {
                         .headers(responseHeaders)
                         .body(response.getBody());
             } else if ("json".equals(requestFormat)) {
-                String jsonBody = request.getParameter("body"); // Assuming JSON is sent as a 'body' parameter
+                // Das Frontend schickt den JSON-Body unverändert als Request-Body
+                String jsonBody = new String(request.getInputStream().readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
                 headers.setContentType(MediaType.APPLICATION_JSON);
                 requestEntity = new HttpEntity<>(jsonBody, headers);
             } else {
