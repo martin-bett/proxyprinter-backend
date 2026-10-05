@@ -3,6 +3,8 @@ package my.poo.mtgcrawl.mtgprint.entitiy;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.hibernate.annotations.Fetch;
+import org.hibernate.annotations.FetchMode;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
@@ -16,6 +18,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -130,4 +133,11 @@ public class ApiConfig {
     private String cardFacesImageUrlField;
     @Column
     private String cardFacesNameField;
+
+    // Verbundene Karten (z.B. Scryfall all_parts): jede Liste eine Zeile, Einträge werden eigene Karten.
+    // Gespeichert wird separat in ApiConfigService, deshalb ohne Cascade.
+    @OneToMany(mappedBy = "config")
+    @OrderBy("position")
+    @Fetch(FetchMode.SUBSELECT)
+    private List<ApiConfigConnectedCard> connectedCards;
 }

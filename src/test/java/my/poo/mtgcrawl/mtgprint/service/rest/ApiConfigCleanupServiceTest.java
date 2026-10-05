@@ -29,6 +29,7 @@ class ApiConfigCleanupServiceTest {
         LocalDateTime expected = LocalDateTime.now().minusDays(180);
         assertTrue(Math.abs(java.time.Duration.between(expected, cutoff.getValue()).toSeconds()) < 5);
         verify(repository).deleteParametersOf(List.of(12L, 13L));
+        verify(repository).deleteConnectedCardsOf(List.of(12L, 13L));
         verify(repository).deleteRatingsOf(List.of(12L, 13L));
     }
 

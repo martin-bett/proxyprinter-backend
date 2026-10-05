@@ -75,6 +75,15 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
     );
 
     @Modifying
+    @Query(value = """
+        INSERT INTO proxymaster.api_config_connected_card (config_id, position, data_list_field, name_field, link_field, type_field)
+        SELECT :newId, position, data_list_field, name_field, link_field, type_field
+        FROM proxymaster.api_config_connected_card
+        WHERE config_id = :id
+        """, nativeQuery = true)
+    int copyConnectedCards(@Param("id") Long id, @Param("newId") Long newId);
+
+    @Modifying
     @Query(value = "UPDATE proxymaster.api_config SET last_used = now() WHERE id IN (:ids)", nativeQuery = true)
     int markUsed(@Param("ids") Collection<Long> ids);
 
@@ -85,6 +94,10 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
         WHERE ip_address IS NOT NULL AND last_used IS NOT NULL AND last_used < :cutoff
         """, nativeQuery = true)
     List<Long> findUnusedSince(@Param("cutoff") LocalDateTime cutoff);
+
+    @Modifying
+    @Query(value = "DELETE FROM proxymaster.api_config_connected_card WHERE config_id IN (:ids)", nativeQuery = true)
+    int deleteConnectedCardsOf(@Param("ids") Collection<Long> ids);
 
     @Modifying
     @Query(value = "DELETE FROM proxymaster.api_config_parameter WHERE config_id IN (:ids)", nativeQuery = true)

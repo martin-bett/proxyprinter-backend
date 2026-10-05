@@ -11,8 +11,10 @@ import org.mapstruct.Mapping;
 import org.mapstruct.factory.Mappers;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfig;
+import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfigConnectedCard;
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfigParameter;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ApiConfigDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.ConnectedCardLocatorDto;
 import my.poo.mtgcrawl.mtgprint.enums.ApiCategory;
 
 @Mapper(componentModel = "spring", imports = {Collectors.class, HashMap.class})
@@ -21,11 +23,13 @@ public interface ApiConfigMapper {
 
     @Mapping(target = "parameterMap", expression = "java(mapParametersToMap(apiConfig.getParameterMap()))")
     @Mapping(target = "category", expression = "java(mapEnumToString(apiConfig.getCategory()))")
+    @Mapping(target = "connectedCards", expression = "java(mapConnectedCardsToLocators(apiConfig.getConnectedCards()))")
     ApiConfigDto toDTO(ApiConfig apiConfig);
 
     @Mapping(target = "parameterMap", expression = "java(mapMapToParameters(dto.getParameterMap()))")
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
     @Mapping(target = "lastUsed", ignore = true)
+    @Mapping(target = "connectedCards", expression = "java(mapLocatorsToConnectedCards(dto.getConnectedCards()))")
     ApiConfig toEntity(ApiConfigDto dto);
 
     default Map<String, Map<String, String>> mapParametersToMap(List<ApiConfigParameter> parameters) {
@@ -67,6 +71,47 @@ public interface ApiConfigMapper {
                     });
             })
             .collect(Collectors.toList());
+    }
+
+    default List<ConnectedCardLocatorDto> mapConnectedCardsToLocators(List<ApiConfigConnectedCard> connectedCards) {
+        if (connectedCards == null) {
+            return new ArrayList<>();
+        }
+        return connectedCards.stream()
+            .map(card -> {
+                ConnectedCardLocatorDto dto = new ConnectedCardLocatorDto();
+                dto.setDataListField(card.getDataListField());
+                dto.setNameField(card.getNameField());
+                dto.setLinkField(card.getLinkField());
+                dto.setTypeField(card.getTypeField());
+                return dto;
+            })
+            .collect(Collectors.toList());
+    }
+
+    // Leere Zeilen (ohne Liste oder Name) fallen weg, position = Reihenfolge im Request
+    default List<ApiConfigConnectedCard> mapLocatorsToConnectedCards(List<ConnectedCardLocatorDto> locators) {
+        List<ApiConfigConnectedCard> result = new ArrayList<>();
+        if (locators == null) {
+            return result;
+        }
+        for (ConnectedCardLocatorDto locator : locators) {
+            if (locator == null || isBlank(locator.getDataListField()) || isBlank(locator.getNameField())) {
+                continue;
+            }
+            ApiConfigConnectedCard card = new ApiConfigConnectedCard();
+            card.setPosition(result.size());
+            card.setDataListField(locator.getDataListField().trim());
+            card.setNameField(locator.getNameField().trim());
+            card.setLinkField(isBlank(locator.getLinkField()) ? null : locator.getLinkField().trim());
+            card.setTypeField(isBlank(locator.getTypeField()) ? null : locator.getTypeField().trim());
+            result.add(card);
+        }
+        return result;
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
         // Enum zu String
