@@ -8,16 +8,19 @@ import my.poo.mtgcrawl.mtgprint.service.mail.MailService;
 /**
  * Schreibt die Mails rund um ein PDF. Verschickt wird ein Download-Link statt eines
  * Anhangs, weil PDFs mehrere hundert MB groß werden können. Der Link zeigt auf
- * GET /api/pdf/{progressId} und gilt so lange, wie das PDF im Cache liegt (24h).
+ * GET /api/pdf/{progressId} und gilt so lange, wie das PDF im Cache liegt (pdf.retention-days).
  */
 @Component
 public class PdfMailNotifier {
 
     private final MailService mailService;
     private final String publicUrl;
+    private final int retentionDays;
 
-    public PdfMailNotifier(MailService mailService, @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl) {
+    public PdfMailNotifier(MailService mailService, @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl,
+            @Value("${pdf.retention-days:7}") int retentionDays) {
         this.mailService = mailService;
+        this.retentionDays = Math.max(1, retentionDays);
         this.publicUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
     }
 
@@ -30,11 +33,10 @@ public class PdfMailNotifier {
     }
 
     public void sendReady(String to, String progressId, long fileSize) {
-        long hours = PdfCacheService.MAX_AGE_MS / (60 * 60 * 1000L);
         String text = "Hi,\n\n"
                 + "your proxy PDF is ready" + (fileSize > 0 ? " (" + formatMb(fileSize) + ")" : "") + ". Download it here:\n\n"
                 + downloadUrl(progressId) + "\n\n"
-                + "The link works for about " + hours + " hours.\n\n"
+                + "The link works for " + retentionDays + (retentionDays == 1 ? " day" : " days") + ".\n\n"
                 + "Proxyprinter\n" + publicUrl + "\n";
         mailService.send(to, "Your proxy PDF is ready", text);
     }

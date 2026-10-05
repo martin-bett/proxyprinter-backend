@@ -44,6 +44,14 @@ public class FileController {
         return ResponseEntity.ok(result);
     }
 
+    /** Verlängert die Aufbewahrung eines Uploads (für Snapshots). 204 = verlängert, 404 = schon gelöscht. */
+    @PostMapping("/{generatedId}/touch")
+    public ResponseEntity<Void> touchFile(@PathVariable String generatedId) {
+        return fileUploadService.touch(generatedId)
+                ? ResponseEntity.noContent().build()
+                : ResponseEntity.notFound().build();
+    }
+
     @GetMapping("/download/{generatedId}")
     public ResponseEntity<byte[]> downloadFile(@PathVariable String generatedId) {
         try {

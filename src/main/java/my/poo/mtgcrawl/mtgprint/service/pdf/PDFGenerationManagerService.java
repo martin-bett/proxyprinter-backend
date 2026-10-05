@@ -72,6 +72,7 @@ public class PDFGenerationManagerService {
 
         byte[] cachedPdf = pdfCacheService.getFromCache(progressId);
         if (cachedPdf != null) {
+            pdfCacheService.refresh(progressId);
             ProgressDto dto = ProgressDto.of(progressId, Category.finishing, "PDF already cached, ready for download.", 1, 1);
             dto.setFileSize(cachedPdf.length);
             job.sendProgress(dto);
@@ -146,6 +147,12 @@ public class PDFGenerationManagerService {
         return history.get(history.size() - 1);
     }
 
+    /** true, solange ein Job für diese ID wartet oder läuft. */
+    public boolean isInProgress(String progressId) {
+        PdfJob job = allJobs.get(progressId);
+        return job != null && job.status != JobStatus.FINISHED;
+    }
+
     public List<ProgressDto> getProgressHistory(String progressId) {
         PdfJob job = allJobs.get(progressId);
         return job == null ? null : new ArrayList<>(job.progressHistory);
@@ -167,7 +174,7 @@ public class PDFGenerationManagerService {
     @Scheduled(fixedRate = 60 * 60 * 1000L)
     public void cleanUpJobs() {
         long now = System.currentTimeMillis();
-        allJobs.values().removeIf(job -> job.status == JobStatus.FINISHED && now - job.finishedAt > PdfCacheService.MAX_AGE_MS);
+        allJobs.values().removeIf(job -> job.status == JobStatus.FINISHED && now - job.finishedAt > pdfCacheService.getMaxAgeMs());
     }
 
     @PreDestroy
