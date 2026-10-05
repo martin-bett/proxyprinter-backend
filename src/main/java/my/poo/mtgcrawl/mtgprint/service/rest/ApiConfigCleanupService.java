@@ -43,6 +43,7 @@ public class ApiConfigCleanupService {
             return 0;
         }
         apiConfigRepository.deleteParametersOf(ids);
+        apiConfigRepository.deleteConnectedCardsOf(ids);
         apiConfigRepository.deleteRatingsOf(ids);
         int deleted = apiConfigRepository.deleteByIds(ids);
         log.info("Deleted {} API configs unused for more than {} days: {}", deleted, maxUnusedDays, ids);

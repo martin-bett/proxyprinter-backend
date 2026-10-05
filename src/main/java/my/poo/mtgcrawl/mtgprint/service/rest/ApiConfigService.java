@@ -11,6 +11,8 @@ import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfig;
 import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ApiConfigDto;
 import my.poo.mtgcrawl.mtgprint.enums.ApiCategory;
+import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfigConnectedCard;
+import my.poo.mtgcrawl.mtgprint.repository.ApiConfigConnectedCardRepository;
 import my.poo.mtgcrawl.mtgprint.repository.ApiConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.mapper.ApiConfigMapper;
 
@@ -19,6 +21,7 @@ import my.poo.mtgcrawl.mtgprint.service.mapper.ApiConfigMapper;
 @AllArgsConstructor
 public class ApiConfigService {
     private ApiConfigRepository apiConfigRepository;
+    private ApiConfigConnectedCardRepository connectedCardRepository;
     private ApiConfigMapper mapper;
     
     public Long createApiConfig(VisitorIdentifier visitorIdentifier) {
@@ -27,12 +30,17 @@ public class ApiConfigService {
 
     public Long copyConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
         List<Long> idList = apiConfigRepository.copyApiConfig(request.getId(), visitorIdentifier.getIpAddress(), visitorIdentifier.getBrowserFingerprint());
-        return idList != null && idList.size() > 0 ? idList.get(0) : null; 
+        Long newId = idList != null && idList.size() > 0 ? idList.get(0) : null;
+        if (newId != null) {
+            apiConfigRepository.copyConnectedCards(request.getId(), newId);
+        }
+        return newId;
     }
 
     public void deleteConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
         if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
+            connectedCardRepository.deleteByConfigIds(List.of(old.getId()));
             apiConfigRepository.delete(old);
         }
     }
@@ -56,11 +64,25 @@ public class ApiConfigService {
             ApiConfig config = mapper.toEntity(request);
             config.setVisitorIdentifier(visitorIdentifier);
             config.setLastUsed(LocalDateTime.now());
-            return apiConfigRepository.save(config).getId();
+            List<ApiConfigConnectedCard> connectedCards = config.getConnectedCards();
+            config.setConnectedCards(null);
+            ApiConfig saved = apiConfigRepository.save(config);
+            saveConnectedCards(saved, connectedCards);
+            return saved.getId();
         }
         return null;
     }
     
+    // Listen werden komplett ersetzt: alte Zeilen löschen, neue in der übergebenen Reihenfolge anlegen
+    private void saveConnectedCards(ApiConfig config, List<ApiConfigConnectedCard> connectedCards) {
+        connectedCardRepository.deleteByConfigIds(List.of(config.getId()));
+        if (connectedCards == null || connectedCards.isEmpty()) {
+            return;
+        }
+        connectedCards.forEach(card -> card.setConfig(config));
+        connectedCardRepository.saveAll(connectedCards);
+    }
+
     public Long publishConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
         if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
