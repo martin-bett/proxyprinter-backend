@@ -98,6 +98,20 @@ CREATE TABLE proxymaster.api_config_parameter (
 	CONSTRAINT api_config_parameter_pkey PRIMARY KEY (id)
 );
 
+-- Verbundene Karten (z.B. Scryfall all_parts), je Liste eine Zeile
+CREATE TABLE proxymaster.api_config_connected_card (
+	id serial4 NOT NULL,
+	config_id int8 NOT NULL,
+	"position" int4 NULL,
+	data_list_field varchar(255) NULL,
+	name_field varchar(255) NULL,
+	link_field varchar(255) NULL,
+	type_field varchar(255) NULL,
+	CONSTRAINT api_config_connected_card_pkey PRIMARY KEY (id),
+	CONSTRAINT api_config_connected_card_config_fk FOREIGN KEY (config_id) REFERENCES proxymaster.api_config(id) ON DELETE CASCADE
+);
+CREATE INDEX api_config_connected_card_config_idx ON proxymaster.api_config_connected_card (config_id);
+
 CREATE TABLE proxymaster.gallery_config_parameter (
 	id serial4 NOT NULL,
 	gallery_id int8 NULL,
@@ -107,6 +121,48 @@ CREATE TABLE proxymaster.gallery_config_parameter (
 	CONSTRAINT gallery_config_parameter_gallery_id_name_key UNIQUE (gallery_id, name),
 	CONSTRAINT gallery_config_parameter_pkey PRIMARY KEY (id)
 );
+
+CREATE TABLE proxymaster.deck_finder_config (
+	id serial4 NOT NULL,
+	category proxymaster."api_category" NULL,
+	"name" varchar(255) NULL,
+	official_website varchar(255) NULL,
+	ip_address varchar(255) NULL,
+	browser_fingerprint varchar(255) NULL,
+	published bool DEFAULT false NOT NULL,
+	link_pattern varchar(500) NULL,
+	fetch_url varchar(500) NULL,
+	data_format varchar(255) NULL,
+	deck_name_field varchar(255) NULL,
+	entry_list_fields varchar(500) NULL,
+	quantity_field varchar(255) NULL,
+	name_field varchar(255) NULL,
+	set_field varchar(255) NULL,
+	number_field varchar(255) NULL,
+	board_field varchar(255) NULL,
+	optional_boards varchar(255) NULL,
+	search_url varchar(500) NULL,
+	search_list_field varchar(255) NULL,
+	search_id_field varchar(255) NULL,
+	search_name_field varchar(255) NULL,
+	search_owner_field varchar(255) NULL,
+	search_image_field varchar(255) NULL,
+	search_info_field varchar(255) NULL,
+	CONSTRAINT deck_finder_config_pkey PRIMARY KEY (id)
+);
+
+-- Backend-Logs ab INFO (DbLogService), Einträge älter als 30 Tage werden täglich gelöscht
+CREATE TABLE proxymaster.app_log (
+	id bigserial PRIMARY KEY,
+	logged_at timestamptz NOT NULL,
+	level varchar(5) NOT NULL,
+	logger varchar(255),
+	thread varchar(100),
+	message text,
+	exception text
+);
+CREATE INDEX app_log_logged_at_idx ON proxymaster.app_log (logged_at);
+
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(1, 'MTG'::proxymaster."api_category", 'https://aetherhub.com/', 'aetherhub', false, 'GET', NULL, 'https://aetherhub.com/Card/Search', 2, 'html', NULL, NULL, NULL, true, 'div#cards>div', 'div.item-hidden-text | innerText', NULL, 'img | attr:data-src', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);
@@ -139,6 +195,8 @@ INSERT INTO proxymaster.api_config
 VALUES(8, 'MTG'::proxymaster."api_category", 'https://scryfall.com/', 'scryfall', false, 'GET', NULL, 'https://api.scryfall.com/cards/search', 5, 'json', 'next_page', NULL, NULL, false, 'data', 'name', '//', 'image_uris.png', 'lang', 'set_name', 'collector_number', NULL, NULL, NULL, NULL, NULL, NULL, 'lang', NULL, NULL, true, NULL);
 -- Doppelseitige Karten (Transform, MDFC, ...) haben kein image_uris oben, nur je Seite in card_faces
 UPDATE proxymaster.api_config SET card_faces_data_list_field = 'card_faces', card_faces_image_url_field = 'image_uris.png', card_faces_name_field = 'name' WHERE id = 8;
+-- Tokens, Emblems, Dungeons usw. stehen in all_parts und werden eigene Karten
+INSERT INTO proxymaster.api_config_connected_card (config_id, "position", data_list_field, name_field, link_field, type_field) VALUES(8, 0, 'all_parts', 'name', 'uri', 'type_line');
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(17, 'MISC'::proxymaster."api_category", NULL, 'new config', false, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '0:0:0:0:0:0:0:1', '976130e0482b5dd311d9992109824fba', false, NULL);
@@ -295,8 +353,23 @@ INSERT INTO proxymaster.gallery_config_parameter
 VALUES(2, 2, 'url', 'request', NULL);
 
 
+-- Deckfinder: Decks per Link/ID von Deckbuilder-Seiten laden (Antwort liest das Frontend)
+INSERT INTO proxymaster.deck_finder_config
+(id, category, "name", official_website, published, link_pattern, fetch_url, data_format, deck_name_field, entry_list_fields, quantity_field, name_field, set_field, number_field, board_field, optional_boards, search_url, search_list_field, search_id_field, search_name_field, search_owner_field, search_image_field, search_info_field)
+VALUES(1, 'MTG'::proxymaster."api_category", 'archidekt', 'https://archidekt.com/', true, 'archidekt\.com/(?:api/)?decks/(?<id>\d+)', 'https://archidekt.com/api/decks/{id}/', 'json', 'name', 'cards', 'quantity', 'card.oracleCard.name', 'card.edition.editioncode', 'card.collectorNumber', 'categories', 'Sideboard, Maybeboard', 'https://archidekt.com/api/decks/v3/?name={query}&page={page}', 'results', 'id', 'name', 'owner.username', 'featured', 'size');
+INSERT INTO proxymaster.deck_finder_config
+(id, category, "name", official_website, published, link_pattern, fetch_url, data_format, deck_name_field, entry_list_fields, quantity_field, name_field, set_field, number_field, board_field, optional_boards, search_url, search_list_field, search_id_field, search_name_field, search_owner_field, search_image_field, search_info_field)
+VALUES(2, 'MTG'::proxymaster."api_category", 'tappedout', 'https://tappedout.net/', true, 'tappedout\.net/mtg-decks/(?<id>[\w-]+)', 'https://tappedout.net/mtg-decks/{id}/?fmt=txt', 'text', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sideboard, Maybeboard', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO proxymaster.deck_finder_config
+(id, category, "name", official_website, published, link_pattern, fetch_url, data_format, deck_name_field, entry_list_fields, quantity_field, name_field, set_field, number_field, board_field, optional_boards, search_url, search_list_field, search_id_field, search_name_field, search_owner_field, search_image_field, search_info_field)
+VALUES(3, 'MTG'::proxymaster."api_category", 'edhrec_average', 'https://edhrec.com/', true, 'edhrec\.com/(?:average-decks|commanders)/(?<id>[a-z0-9-]+)', 'https://json.edhrec.com/pages/average-decks/{id}.json', 'json', 'header', 'deck.commander_v2, deck.cards.*', '1', '0', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT INTO proxymaster.deck_finder_config
+(id, category, "name", official_website, published, link_pattern, fetch_url, data_format, deck_name_field, entry_list_fields, quantity_field, name_field, set_field, number_field, board_field, optional_boards, search_url, search_list_field, search_id_field, search_name_field, search_owner_field, search_image_field, search_info_field)
+VALUES(4, 'MTG'::proxymaster."api_category", 'scryfall_deck', 'https://scryfall.com/', true, 'scryfall\.com/@[^/]+/decks/(?<id>[0-9a-f-]{36})', 'https://api.scryfall.com/decks/{id}/export/text', 'text', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'Sideboard, Maybeboard', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
 -- Sequenzen hinter die festen IDs oben setzen, sonst scheitern Create/Copy
 SELECT setval(pg_get_serial_sequence('proxymaster.api_config', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.api_config), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('proxymaster.api_config_parameter', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.api_config_parameter), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('proxymaster.gallery_config', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.gallery_config), 0) + 1, false);
 SELECT setval(pg_get_serial_sequence('proxymaster.gallery_config_parameter', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.gallery_config_parameter), 0) + 1, false);
+SELECT setval(pg_get_serial_sequence('proxymaster.deck_finder_config', 'id'), COALESCE((SELECT MAX(id) FROM proxymaster.deck_finder_config), 0) + 1, false);

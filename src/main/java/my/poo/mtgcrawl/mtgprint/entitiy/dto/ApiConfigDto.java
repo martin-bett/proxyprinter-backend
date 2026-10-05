@@ -1,5 +1,6 @@
 package my.poo.mtgcrawl.mtgprint.entitiy.dto;
 
+import java.util.List;
 import java.util.Map;
 
 import lombok.Data;
@@ -61,4 +62,7 @@ public class ApiConfigDto {
     private String cardFacesDataListField;
     private String cardFacesImageUrlField;
     private String cardFacesNameField;
+
+    // Listen verbundener Karten, Reihenfolge = position
+    private List<ConnectedCardLocatorDto> connectedCards;
 }

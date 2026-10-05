@@ -170,15 +170,19 @@ public class DocumentGenerator {
         // Überprüfe den Cache nach dem Bild
         bufferedImage = bufferedImageCacheService.getImage(imagePath.getImageUrl());
         if (bufferedImage == null) {
+            File file = new File(imagePath.getImageUrl());
             try {
-                bufferedImage = ImageIO.read(new File(imagePath.getImageUrl()));
-                if (bufferedImage == null) {
-                    throw new IOException("Bildformat wird nicht unterstützt: " + imagePath);
-                }
-                bufferedImageCacheService.addImage(imagePath.getImageUrl(), bufferedImage);
+                bufferedImage = ImageDecoder.read(file);
             } catch (Exception e) {
-                throw new IOException("Fehler beim Laden des Bildes: " + e.getMessage());
+                String source = imagePath.getSourceUrl() != null ? imagePath.getSourceUrl() : imagePath.getImageUrl();
+                log.error("Bild {} ({}) lässt sich nicht lesen", source, file, e);
+                // Kaputter Download: löschen, damit der nächste Versuch neu lädt statt wieder an derselben Datei zu scheitern
+                if (imagePath.getSourceUrl() != null && file.delete()) {
+                    log.info("Fehlerhafte Datei {} aus dem Download-Cache gelöscht", file);
+                }
+                throw new IOException("Fehler beim Laden des Bildes " + source + ": " + e.getMessage(), e);
             }
+            bufferedImageCacheService.addImage(imagePath.getImageUrl(), bufferedImage);
         }
     
         // Zuschneiden des Bildes, wenn CropSettings angegeben sind
@@ -221,7 +225,9 @@ public class DocumentGenerator {
             newWidth = (originalImage.getWidth() * maxHeight) / originalImage.getHeight();
         }
     
-        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, originalImage.getType());
+        // getType() ist bei manchen Formaten TYPE_CUSTOM (0), das kann man nicht neu anlegen
+        int type = originalImage.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
+        BufferedImage scaledImage = new BufferedImage(newWidth, newHeight, type);
         Graphics2D g2d = scaledImage.createGraphics();
         g2d.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
         g2d.dispose();
