@@ -56,6 +56,7 @@ public class PDFGenerationService {
             }
 
             String filePath = null;
+            String sourceUrl = null;
             String message;
             if (url.startsWith("/api/files/download/")) {
                 filePath = FileUploadService.IMG_TEMP_FOLDER + url.replace("/api/files/download/", "");
@@ -63,6 +64,7 @@ public class PDFGenerationService {
             } else {
                 try {
                     filePath = fileDownloadService.downloadFile(url, hashService.curFileName(url));
+                    sourceUrl = url;
                     message = "Downloaded file " + (i + 1) + " of " + totalFiles;
                 } catch (Exception e) {
                     message = "Failed to download file " + (i + 1) + ": " + e.getMessage();
@@ -77,6 +79,7 @@ public class PDFGenerationService {
                 ImageDto processedImage = new ImageDto();
                 processedImage.setImageUrl(filePath);
                 processedImage.setCropSettings(cropSettings);
+                processedImage.setSourceUrl(sourceUrl);
                 processedImages.add(processedImage);
             }
 

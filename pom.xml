@@ -16,6 +16,7 @@
 	<description>Demo project for Spring Boot</description>
 	<properties>
 		<java.version>25</java.version>
+		<twelvemonkeys.version>3.15.2</twelvemonkeys.version>
 	</properties>
 	<dependencies>
 
@@ -130,28 +131,28 @@
 <dependency>
 	<groupId>com.twelvemonkeys.imageio</groupId>
 	<artifactId>imageio-core</artifactId>
-	<version>3.9.4</version>
+	<version>${twelvemonkeys.version}</version>
 </dependency>
 
 <!-- TwelveMonkeys ImageIO JPEG Plugin -->
 <dependency>
 	<groupId>com.twelvemonkeys.imageio</groupId>
 	<artifactId>imageio-jpeg</artifactId>
-	<version>3.9.4</version>
+	<version>${twelvemonkeys.version}</version>
 </dependency>
 
 <!-- TwelveMonkeys ImageIO TIFF Plugin -->
 <dependency>
 	<groupId>com.twelvemonkeys.imageio</groupId>
 	<artifactId>imageio-tiff</artifactId>
-	<version>3.9.4</version>
+	<version>${twelvemonkeys.version}</version>
 </dependency>
 
 <!-- TwelveMonkeys ImageIO WebP Plugin -->
 <dependency>
 	<groupId>com.twelvemonkeys.imageio</groupId>
 	<artifactId>imageio-webp</artifactId>
-	<version>3.9.4</version>
+	<version>${twelvemonkeys.version}</version>
 </dependency>
 
 
