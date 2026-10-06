@@ -29,6 +29,7 @@ DEVELOP_PORT=8100
 [[ "$SLUG" =~ ^[a-z0-9][a-z0-9-]{0,39}$ ]] || { echo "Ungültiger SLUG: $SLUG" >&2; exit 1; }
 [ "$SIDE" = backend ] || [ "$SIDE" = frontend ] || { echo "Ungültige SIDE: $SIDE" >&2; exit 1; }
 
+if [ ! -f "$PREVIEW_ROOT/.env" ] && [ "$ACTION" = close ]; then echo "Keine Testumgebungen eingerichtet, nichts zu tun"; exit 0; fi
 [ -f "$PREVIEW_ROOT/.env" ] || { echo "Testumgebungen sind auf dem Server noch nicht eingerichtet ($PREVIEW_ROOT/.env fehlt, siehe deploy/PREVIEW.md)" >&2; exit 1; }
 cd "$PREVIEW_ROOT"
 exec 9>.lock
