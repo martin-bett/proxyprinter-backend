@@ -30,6 +30,14 @@ public class GalleryConfigDto {
     private String imageUrlField;
     private String defaultLanguage;
 
+    private String linkPattern;
+    private boolean followInputRedirects;
+    private String credential;
+    private String imageUrlPattern;
+    private String imageUrlReplacement;
+    private String namePattern;
+    private String nameReplacement;
+
     private String method;
     private String requestFormat;
 

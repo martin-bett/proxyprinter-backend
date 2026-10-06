@@ -14,7 +14,7 @@ builds the proxy PDF (PDFBox) and sends it by mail. Frontend lives in `martin-be
 - `repository/` – Spring Data repositories
 - `service/rest/` – config services, image fetch/upload/download, API probe, nightly config cleanup
 - `service/pdf/` – PDF generation, job/progress handling, PDF and image caches, mail notifier
-- `service/gallery/` – gallery sources (Google Drive, Reddit)
+- `service/gallery/` – generic server-side fetch for gallery configs (link pattern, credentials); no per-source code
 - `service/deckfinder/` – deck import from deckbuilder sites
 - `service/searchcache/` – shared search result cache (JSON files)
 - `service/mapper/` – MapStruct mappers; `service/log/` – DB log appender; `service/mail/` – mail

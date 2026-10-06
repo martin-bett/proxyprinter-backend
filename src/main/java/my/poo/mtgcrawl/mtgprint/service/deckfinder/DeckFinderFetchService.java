@@ -146,7 +146,7 @@ public class DeckFinderFetchService {
     }
 
     /** Nur http(s) und keine internen Adressen, damit die Config nicht ins eigene Netz zeigt. */
-    static URI checkedUri(String url) {
+    public static URI checkedUri(String url) {
         URI uri;
         try {
             uri = URI.create(url);
