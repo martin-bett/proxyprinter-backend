@@ -29,11 +29,33 @@ class SearchCacheControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        mvc = mvc(true);
+    }
+
+    private MockMvc mvc(boolean enabled) throws Exception {
         Constructor<SearchResultCacheService> ctor = SearchResultCacheService.class.getDeclaredConstructor(
                 ObjectMapper.class, boolean.class, Path.class, int.class, int.class);
         ctor.setAccessible(true);
-        SearchResultCacheService cache = ctor.newInstance(new ObjectMapper(), true, dir, 7, 2048);
-        mvc = MockMvcBuilders.standaloneSetup(new SearchCacheController(cache)).build();
+        SearchResultCacheService cache = ctor.newInstance(new ObjectMapper(), enabled, dir, 7, 2048);
+        return MockMvcBuilders.standaloneSetup(new SearchCacheController(cache)).build();
+    }
+
+    @Test
+    void switchedOffServerStoresNothing() throws Exception {
+        MockMvc off = mvc(false);
+        off.perform(get("/api/search-cache/info")).andExpect(jsonPath("$.enabled").value(false));
+        off.perform(put("/api/search-cache").contentType(MediaType.APPLICATION_JSON).content("""
+                {"entries":[{"config":"7","configHash":"abc","term":"Shock","result":{"results":[]}}]}
+                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.stored").value(0));
+        off.perform(post("/api/search-cache/lookup").contentType(MediaType.APPLICATION_JSON).content("""
+                {"entries":[{"config":"7","configHash":"abc","term":"Shock"}]}
+                """))
+                .andExpect(jsonPath("$.hits.length()").value(0));
+        try (java.util.stream.Stream<Path> files = java.nio.file.Files.walk(dir)) {
+            org.junit.jupiter.api.Assertions.assertEquals(0, files.filter(java.nio.file.Files::isRegularFile).count());
+        }
     }
 
     @Test

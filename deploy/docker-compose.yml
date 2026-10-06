@@ -32,6 +32,8 @@ services:
       GALLERY_GOOGLE_APIKEY: ${GALLERY_GOOGLE_APIKEY:-}
       GALLERY_REDDIT_CLIENTID: ${GALLERY_REDDIT_CLIENTID:-}
       GALLERY_REDDIT_CLIENTSECRET: ${GALLERY_REDDIT_CLIENTSECRET:-}
+      # Gemeinsamer Such-Cache; false = keine Dateien lesen/schreiben (z. B. für PR-Testumgebungen)
+      SEARCHCACHE_ENABLED: ${SEARCHCACHE_ENABLED:-true}
       JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_OPTS:--Xmx1g}
     volumes:
       - backend-img:/app/img
