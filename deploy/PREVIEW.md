@@ -1,11 +1,12 @@
 # Testumgebungen
 
 - **https://test.proxyprinter.eu**: immer der aktuelle Stand von `develop` (Backend, Frontend und eine eigene Datenbank, beim ersten Start eine Kopie der Produktion ohne Log-Einträge).
-- **https://&lt;branch&gt;.test.proxyprinter.eu**: eine Umgebung pro PR nach `develop`. Der Name kommt aus dem Branch, ohne `claude/` (z. B. `claude/project-thread-2o4t9m` wird zu `project-thread-2o4t9m.test.proxyprinter.eu`).
+- **https://&lt;kürzel&gt;.test.proxyprinter.eu**: eine Umgebung pro PR nach `develop`. Das Kürzel sind die ersten 6 Zeichen eines Hashes des Branch-Namens (z. B. `153d5e.test.proxyprinter.eu` für `claude/project-thread-2o4t9m`). Es ist in beiden Repos gleich und steht im PR-Kommentar.
   - Haben ein Backend- und ein Frontend-PR denselben Branch-Namen, landen beide in derselben Umgebung.
   - Was der PR nicht ändert, kommt von develop. Ein reiner Frontend-PR benutzt das develop-Backend und dessen Datenbank.
   - Ein Backend-PR bekommt eine eigene Datenbank (Kopie der test-Datenbank), seine SQL-Skripte laufen nur dort.
   - Der Link steht als Kommentar im PR. Jeder Push rollt neu aus.
+  - Ändert ein PR nur Doku (`*.md`, `docs/`, `.claude/`, `archive/`, `LICENSE`, `TODO`, `.gitignore`), wird nichts ausgerollt. Dasselbe gilt für einen Push auf develop.
   - Nach Merge oder Schließen wird der Teil entfernt; sind beide PRs zu, wird die ganze Umgebung samt Datenbank, nginx-Eintrag und Zertifikat gelöscht.
 - Alle Testumgebungen sind mit Benutzer und Passwort geschützt, E-Mail-Versand ist aus.
 - PR-Backends schalten den gemeinsamen Such-Cache ab (`SEARCHCACHE_ENABLED=false`) und behalten PDFs, Uploads und DB-Logs nur kurz. Neue speicherintensive Funktionen bekommen einen Schalter und werden in `write_compose` in `.github/deploy/preview.sh` für PRs ausgeschaltet. Alles, was ein PR-Backend auf die Platte schreibt (auch der Bild-Cache), liegt im Container und verschwindet mit der Umgebung.
