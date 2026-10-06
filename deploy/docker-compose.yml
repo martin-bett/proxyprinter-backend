@@ -36,6 +36,7 @@ services:
     volumes:
       - backend-img:/app/img
       - backend-pdf:/app/pdf
+      - backend-search-cache:/app/search-cache
 
   frontend:
     image: ghcr.io/martin-bett/mtgprint-frontend:${FRONTEND_TAG:-latest}
@@ -60,3 +61,4 @@ volumes:
   db-data:
   backend-img:
   backend-pdf:
+  backend-search-cache:
