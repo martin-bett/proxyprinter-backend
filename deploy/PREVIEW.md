@@ -8,6 +8,7 @@
   - Der Link steht als Kommentar im PR. Jeder Push rollt neu aus.
   - Nach Merge oder Schließen wird der Teil entfernt; sind beide PRs zu, wird die ganze Umgebung samt Datenbank, nginx-Eintrag und Zertifikat gelöscht.
 - Alle Testumgebungen sind mit Benutzer und Passwort geschützt, E-Mail-Versand ist aus.
+- PR-Backends schalten den gemeinsamen Such-Cache ab (`SEARCHCACHE_ENABLED=false`) und behalten PDFs, Uploads und DB-Logs nur kurz. Neue speicherintensive Funktionen bekommen einen Schalter und werden in `write_compose` in `.github/deploy/preview.sh` für PRs ausgeschaltet. Alles, was ein PR-Backend auf die Platte schreibt (auch der Bild-Cache), liegt im Container und verschwindet mit der Umgebung.
 
 Technik: `.github/deploy/preview.sh` (in beiden Repos identisch), aufgerufen aus `ci.yml` (Job `preview`) und `preview-close.yml`. Auf dem Server liegt alles unter `/root/mnt/proxyprinter-test`, die Produktion wird nur gelesen (Datenbank-Kopie beim ersten Start).
 
