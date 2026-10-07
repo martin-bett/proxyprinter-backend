@@ -78,3 +78,9 @@ docker stats --no-stream --format "table {{.Name}}\t{{.MemUsage}}" | grep ppt-
 Logs einer Umgebung: `cd /root/mnt/proxyprinter-test/envs/<name> && docker compose logs --tail 100` (bzw. `.../develop`).
 
 Datenbank von test neu aus der Produktion kopieren: `rm /root/mnt/proxyprinter-test/develop/.seeded`, dann CI auf `develop` in `mtgprint` neu ausführen.
+
+## Aufräumen der PR-Images (ghcr.io)
+
+Workflow `ghcr-cleanup.yml` (in beiden Repos, nachts 03:30 UTC, nach jedem geschlossenen PR und von Hand): löscht `br-<slug>`-Images, zu denen es keinen offenen PR nach `develop` mehr gibt, und untagged Versionen, auf die kein behaltenes Tag zeigt (jeweils nur wenn älter als 24 h). `sha-*`, `latest` und `develop` samt ihren Platform-Manifesten bleiben immer. Von Hand mit "Run workflow" und `dry_run` (Standard) vorab ansehen.
+
+Einmalig auf GitHub: Profil → Packages → `mtgprint-backend` bzw. `mtgprint-frontend` → Package settings → "Manage Actions access" → Repository hinzufügen mit Rolle **Admin**. Ohne das schlägt der Workflow mit 403 fehl.
