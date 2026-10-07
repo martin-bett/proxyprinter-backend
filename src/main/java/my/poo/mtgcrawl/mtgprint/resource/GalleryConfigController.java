@@ -1,11 +1,15 @@
 package my.poo.mtgcrawl.mtgprint.resource;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.*;
@@ -17,6 +21,8 @@ import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.GalleryConfigDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.RatingRequest;
 import my.poo.mtgcrawl.mtgprint.repository.GalleryConfigRepository;
+import my.poo.mtgcrawl.mtgprint.service.gallery.GalleryFetchService;
+import my.poo.mtgcrawl.mtgprint.service.gallery.GallerySourceException;
 import my.poo.mtgcrawl.mtgprint.service.mapper.GalleryConfigMapper;
 import my.poo.mtgcrawl.mtgprint.service.rest.GalleryConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.RatingService;
@@ -29,6 +35,7 @@ public class GalleryConfigController {
     private final GalleryConfigRepository galleryConfigRepository;
     private final GalleryConfigService galleryConfigService;
     private final RatingService ratingService;
+    private final GalleryFetchService galleryFetchService;
 
     private final GalleryConfigMapper mapper;
     @GetMapping
@@ -93,6 +100,28 @@ public class GalleryConfigController {
         return ResponseEntity.ok(res);
     }
     
+    /**
+     * Führt die Config serverseitig aus (Link-Pattern, Zugang) und liefert die Rohantwort der Quelle;
+     * die Felder liest das Frontend. Nur für veröffentlichte oder eigene Configs.
+     */
+    @GetMapping("/{configId}/fetch")
+    public ResponseEntity<String> fetch(
+            @PathVariable GalleryConfig configId,
+            @RequestParam(value = "input", required = false) String input,
+            HttpServletRequest httpRequest) {
+        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
+        if (!configId.isPublished() && !galleryConfigService.checkVisitorIdentifier(configId, visitorIdentifier)) {
+            throw new GallerySourceException(HttpStatus.NOT_FOUND, "Gallery-Config nicht gefunden.");
+        }
+        GalleryFetchService.GalleryResponse response = galleryFetchService.fetch(configId, input);
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(response.contentType())).body(response.body());
+    }
+
+    @ExceptionHandler(GallerySourceException.class)
+    public ResponseEntity<Map<String, String>> handle(GallerySourceException e) {
+        return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getMessage()));
+    }
+
     @PostMapping("/{configId}/rate")
     public ResponseEntity<?> rateConfig(
             @PathVariable GalleryConfig configId,
