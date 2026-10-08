@@ -43,6 +43,13 @@ CREATE TABLE proxymaster.gallery_config (
 	request_format varchar(255) NULL,
 	use_backend_proxy bool NULL,
 	default_language varchar(16) NULL,
+	link_pattern varchar(500) NULL,
+	follow_input_redirects bool DEFAULT false NOT NULL,
+	credential varchar(255) NULL,
+	image_url_pattern varchar(500) NULL,
+	image_url_replacement varchar(500) NULL,
+	name_pattern varchar(500) NULL,
+	name_replacement varchar(500) NULL,
 	CONSTRAINT gallery_config_pkey PRIMARY KEY (id)
 );
 
@@ -336,14 +343,15 @@ INSERT INTO proxymaster.api_config_parameter
 (id, config_id, "name", value, category)
 VALUES(58, 20, 'q', '{cardname}', 'request');
 
--- Galerie-Quellen laufen über das Backend (/api/gallery/source/...), das liefert {images:[{name,imageUrl}]}.
+-- Gallery-Configs ohne eigenen Code: link_pattern zerlegt den Link in {id}, base_url wird damit gefüllt und
+-- (bei link_pattern oder credential) vom Backend abgerufen; Felder und image_url_pattern liest das Frontend.
 -- Parameter "url" ohne Wert wird im Frontend zum Eingabefeld ($GALLERY_INPUT$).
 INSERT INTO proxymaster.gallery_config
-(id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy)
-VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', '/api/gallery/source/reddit', 'json', 'imageUrl', 'name', 'images', NULL, 'https://www.reddit.com/r/magicproxies/', NULL, NULL, true, 'GET', NULL, false);
+(id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy, link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement)
+VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', 'https://www.reddit.com/comments/{id}.json?raw_json=1&limit=1', 'json', 's.u', 'id', '0.data.children.0.data.media_metadata', NULL, 'https://www.reddit.com/r/magicproxies/', NULL, NULL, true, 'GET', NULL, false, '(?:/comments/|/gallery/|redd\.it/)(?<id>[a-z0-9]{4,12})(?:[/?#]|$)', true, 'reddit', '^https://(?:preview|external-preview)\.redd\.it/([^?]+).*$', 'https://i.redd.it/$1', NULL, NULL);
 INSERT INTO proxymaster.gallery_config
-(id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy)
-VALUES(2, 'MISC'::proxymaster."api_category", 'google_drive', '/api/gallery/source/gdrive', 'json', 'imageUrl', 'name', 'images', NULL, 'https://drive.google.com/', NULL, NULL, true, 'GET', NULL, false);
+(id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy, link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement)
+VALUES(2, 'MISC'::proxymaster."api_category", 'google_drive', 'https://drive.google.com/embeddedfolderview?id={id}', 'html', 'a[href] | attr:href', '.flip-entry-title | innerText', 'div.flip-entry:not(:has(a[href*="/folders/"]))', NULL, 'https://drive.google.com/', NULL, NULL, true, 'GET', NULL, false, '(?:/folders/|[?&]id=)(?<id>[A-Za-z0-9_-]{10,})', false, NULL, '^.*/file/d/([A-Za-z0-9_-]+).*$', 'https://drive.google.com/uc?export=download&id=$1', '\.[A-Za-z0-9]{2,5}$', '');
 
 INSERT INTO proxymaster.gallery_config_parameter
 (id, gallery_id, "name", category, value)
