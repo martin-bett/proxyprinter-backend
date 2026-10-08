@@ -74,4 +74,25 @@ public class GalleryConfig {
     @Column
     private String defaultLanguage;
 
+    // Serverseitige Ausführung: Regex mit benannten Gruppen, die der Link des Nutzers erfüllen muss ({id} in base_url)
+    @Column
+    private String linkPattern;
+    // Entspricht der Link nicht dem Pattern, zuerst seinen Weiterleitungen folgen (Kurz-/Teilen-Links)
+    @Column
+    private boolean followInputRedirects;
+    // Name eines serverseitig hinterlegten Zugangs (Cookie/Authorization), wird nur zum passenden Host gesendet
+    @Column
+    private String credential;
+
+    // Nachbearbeitung der gelesenen Werte im Frontend: Regex mit Gruppen, Ersetzung mit $1
+    // Passt imageUrlPattern nicht, fällt der Treffer weg
+    @Column
+    private String imageUrlPattern;
+    @Column
+    private String imageUrlReplacement;
+    @Column
+    private String namePattern;
+    @Column
+    private String nameReplacement;
+
 }
