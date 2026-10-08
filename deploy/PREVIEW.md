@@ -80,6 +80,17 @@ Logs einer Umgebung: `cd /root/mnt/proxyprinter-test/envs/<name> && docker compo
 
 Datenbank von test neu aus der Produktion kopieren: `rm /root/mnt/proxyprinter-test/develop/.seeded`, dann CI auf `develop` in `mtgprint` neu ausführen.
 
+## Testumgebung und Tests pro PR überspringen (Labels)
+
+Zwei Labels am PR, getrennt entscheidbar (gelten nur für PRs nach `develop`; Pushes auf develop/master und Release-PRs nach master ignorieren sie):
+
+- `skip-preview`: keine Testumgebung. Das Image wird nur gebaut (außer zusammen mit `skip-tests`), nicht gepusht und nicht ausgerollt. Eine schon laufende Umgebung bleibt bis Merge/Schließen auf dem alten Stand.
+- `skip-tests`: der Job `test` (Typecheck/Tests/Build bzw. `mvn verify`) wird übersprungen. Ein übersprungener Job gilt bei required checks als erfüllt, der PR bleibt mergebar. Die Testumgebung läuft trotzdem, wenn `skip-preview` fehlt.
+
+Label setzen oder entfernen startet CI neu und wertet neu aus. Fehlende Labels legt der Job `labels` in `ci.yml` selbst an.
+
+Regel für Claude-Threads: Ist eine Änderung winzig oder hat keine Funktionsänderung (Tippfehler, Texte, Kommentare, Config ohne Wirkung), schlägt der Thread `skip-preview` und/oder `skip-tests` in der PR-Beschreibung mit einer Zeile Begründung vor. Das Label wird erst gesetzt, wenn martin zustimmt; martin kann auch selbst Labels setzen oder einen Vorschlag ablehnen.
+
 ## Aufräumen der PR-Images (ghcr.io)
 
 Workflow `ghcr-cleanup.yml` (in beiden Repos, nachts 03:30 UTC, nach jedem geschlossenen PR und von Hand): löscht `br-<slug>`-Images, zu denen es keinen offenen PR nach `develop` mehr gibt, und untagged Versionen, auf die kein behaltenes Tag zeigt (jeweils nur wenn älter als 24 h). `sha-*`, `latest` und `develop` samt ihren Platform-Manifesten bleiben immer. Von Hand mit "Run workflow" und `dry_run` (Standard) vorab ansehen.
