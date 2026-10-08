@@ -9,7 +9,8 @@
   - Ändert ein PR nur Doku (`*.md`, `docs/`, `.claude/`, `archive/`, `LICENSE`, `TODO`, `.gitignore`), wird nichts ausgerollt. Dasselbe gilt für einen Push auf develop.
   - Nach Merge oder Schließen wird der Teil entfernt; sind beide PRs zu, wird die ganze Umgebung samt Datenbank, nginx-Eintrag und Zertifikat gelöscht.
 - Alle Testumgebungen sind mit Benutzer und Passwort geschützt, E-Mail-Versand ist aus.
-- PR-Backends schalten den gemeinsamen Such-Cache ab (`SEARCHCACHE_ENABLED=false`) und behalten PDFs, Uploads und DB-Logs nur kurz. Neue speicherintensive Funktionen bekommen einen Schalter und werden in `write_compose` in `.github/deploy/preview.sh` für PRs ausgeschaltet. Alles, was ein PR-Backend auf die Platte schreibt (auch der Bild-Cache), liegt im Container und verschwindet mit der Umgebung.
+- Gemeinsamer Such-Cache: nur das Backend von test.proxyprinter.eu (develop) hat ihn an (`SEARCHCACHE_ENABLED=true`). Seine JSON-Dateien liegen im eigenen Docker-Volume `search-cache` der test-Umgebung (`/app/search-cache`), das Neuausrollen überlebt und von der Produktion getrennt ist. Der Cache füllt sich also durch normale Nutzung von test. Zurücksetzen: `docker volume rm ppt-develop_search-cache` (vorher Backend stoppen). Kein manueller Serverschritt nötig, das Volume entsteht beim nächsten develop-Lauf.
+- PR-Backends schalten den Such-Cache ab (`SEARCHCACHE_ENABLED=false`) und behalten PDFs, Uploads und DB-Logs nur kurz. Neue speicherintensive Funktionen bekommen einen Schalter und werden in `write_compose` in `.github/deploy/preview.sh` für PRs ausgeschaltet. Alles, was ein PR-Backend auf die Platte schreibt (auch der Bild-Cache), liegt im Container und verschwindet mit der Umgebung.
 
 Technik: `.github/deploy/preview.sh` (in beiden Repos identisch), aufgerufen aus `ci.yml` (Job `preview`) und `preview-close.yml`. Auf dem Server liegt alles unter `/root/mnt/proxyprinter-test`, die Produktion wird nur gelesen (Datenbank-Kopie beim ersten Start).
 
@@ -89,3 +90,9 @@ Zwei Labels am PR, getrennt entscheidbar (gelten nur für PRs nach `develop`; Pu
 Label setzen oder entfernen startet CI neu und wertet neu aus. Fehlende Labels legt der Job `labels` in `ci.yml` selbst an.
 
 Regel für Claude-Threads: Ist eine Änderung winzig oder hat keine Funktionsänderung (Tippfehler, Texte, Kommentare, Config ohne Wirkung), schlägt der Thread `skip-preview` und/oder `skip-tests` in der PR-Beschreibung mit einer Zeile Begründung vor. Das Label wird erst gesetzt, wenn martin zustimmt; martin kann auch selbst Labels setzen oder einen Vorschlag ablehnen.
+
+## Aufräumen der PR-Images (ghcr.io)
+
+Workflow `ghcr-cleanup.yml` (in beiden Repos, nachts 03:30 UTC, nach jedem geschlossenen PR und von Hand): löscht `br-<slug>`-Images, zu denen es keinen offenen PR nach `develop` mehr gibt, und untagged Versionen, auf die kein behaltenes Tag zeigt (jeweils nur wenn älter als 24 h). `sha-*`, `latest` und `develop` samt ihren Platform-Manifesten bleiben immer. Von Hand mit "Run workflow" und `dry_run` (Standard) vorab ansehen.
+
+Einmalig auf GitHub: Profil → Packages → `mtgprint-backend` bzw. `mtgprint-frontend` → Package settings → "Manage Actions access" → Repository hinzufügen mit Rolle **Admin**. Ohne das schlägt der Workflow mit 403 fehl.

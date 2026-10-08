@@ -162,6 +162,7 @@ jobs:
     # Tests per Label übersprungen (skipped) sind ok, fehlgeschlagene nicht
     if: always() && needs.docker.outputs.preview == 'true' && (needs.test.result == 'success' || needs.test.result == 'skipped')
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     concurrency:
       group: preview-${{ needs.docker.outputs.slug }}
       cancel-in-progress: false
@@ -197,7 +198,7 @@ jobs:
             bash .github/deploy/build-migrations.sh src/main/resources/sql
             echo '}'
             cat .github/deploy/preview.sh
-          } | ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" -o StrictHostKeyChecking=yes \
+          } | ssh -i ~/.ssh/id_deploy -p "${VPS_PORT:-22}" -o StrictHostKeyChecking=yes -o ServerAliveInterval=30 -o ServerAliveCountMax=4 \
                 "$VPS_USER@$VPS_HOST" 'f=$(mktemp) && cat > "$f" && bash "$f" < /dev/null; rc=$?; rm -f "$f"; exit $rc' | tee preview.log
           { grep -m1 '^PREVIEW_URL=' preview.log || true; } | cut -d= -f2- > preview-url.txt
       - name: Link im PR
