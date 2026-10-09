@@ -43,34 +43,44 @@ public class AuthService {
     private final MailService mailService;
     private final String publicUrl;
     private final boolean logLinks;
+    private final boolean showCode;
     private final Map<String, Deque<Long>> requestsPerKey = new ConcurrentHashMap<>();
 
     public AuthService(AuthRepository repository, MailService mailService,
             @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl,
-            @Value("${auth.dev-log-links:false}") boolean logLinks) {
+            @Value("${auth.dev-log-links:false}") boolean logLinks,
+            @Value("${auth.dev-show-code:false}") boolean showCode) {
         this.repository = repository;
         this.mailService = mailService;
         this.publicUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
         this.logLinks = logLinks;
+        this.showCode = showCode;
     }
 
-    /** Login geht nur, wenn Mails verschickt werden können (oder lokal der Link ins Log geschrieben wird). */
+    /** Login geht nur, wenn Mails verschickt werden können (oder lokal/in Testumgebungen der Code anders sichtbar wird). */
     public boolean isLoginEnabled() {
-        return mailService.isEnabled() || logLinks;
+        return mailService.isEnabled() || logLinks || showCode;
     }
 
     public enum RequestResult { SENT, INVALID_EMAIL, DISABLED, RATE_LIMITED }
 
-    public RequestResult requestLogin(String rawEmail, String ip) {
+    /** Ergebnis einer Login-Anfrage; devCode ist nur in Testumgebungen (auth.dev-show-code) gesetzt. */
+    public record LoginRequest(RequestResult result, String devCode) {
+        static LoginRequest of(RequestResult result) {
+            return new LoginRequest(result, null);
+        }
+    }
+
+    public LoginRequest requestLogin(String rawEmail, String ip) {
         if (!isLoginEnabled()) {
-            return RequestResult.DISABLED;
+            return LoginRequest.of(RequestResult.DISABLED);
         }
         String email = normalize(rawEmail);
         if (email == null) {
-            return RequestResult.INVALID_EMAIL;
+            return LoginRequest.of(RequestResult.INVALID_EMAIL);
         }
         if (!allow("mail:" + email, MAX_REQUESTS_PER_EMAIL_PER_HOUR) || !allow("ip:" + ip, MAX_REQUESTS_PER_IP_PER_HOUR)) {
-            return RequestResult.RATE_LIMITED;
+            return LoginRequest.of(RequestResult.RATE_LIMITED);
         }
         String token = randomToken();
         String code = String.format("%06d", RANDOM.nextInt(1_000_000));
@@ -88,7 +98,7 @@ public class AuthService {
         } else {
             log.info("Login for {} (mail delivery is off, auth.dev-log-links=true): {} code {}", email, link, code);
         }
-        return RequestResult.SENT;
+        return new LoginRequest(RequestResult.SENT, showCode ? code : null);
     }
 
     /** Löst den Link-Token ein. Gibt das Session-Token für das Cookie zurück oder leer. */

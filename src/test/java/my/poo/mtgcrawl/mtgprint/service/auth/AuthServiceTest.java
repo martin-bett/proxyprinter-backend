@@ -18,7 +18,7 @@ class AuthServiceTest {
 
     private final AuthRepository repository = mock(AuthRepository.class);
     private final MailService mail = mock(MailService.class);
-    private final AuthService service = new AuthService(repository, mail, "https://example.test/", false);
+    private final AuthService service = new AuthService(repository, mail, "https://example.test/", false, false);
 
     private String sentText() {
         ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
@@ -30,7 +30,7 @@ class AuthServiceTest {
     void loginMailContainsLinkAndCodeAndStoresOnlyHashes() {
         when(mail.isEnabled()).thenReturn(true);
 
-        assertEquals(RequestResult.SENT, service.requestLogin("  A@B.de ", "1.1.1.1"));
+        assertEquals(RequestResult.SENT, service.requestLogin("  A@B.de ", "1.1.1.1").result());
 
         String text = sentText();
         String token = text.substring(text.indexOf("/?login=") + 8, text.indexOf("\n\n", text.indexOf("/?login=")));
@@ -46,31 +46,48 @@ class AuthServiceTest {
     @Test
     void invalidAddressAndDisabledMailAreRejected() {
         when(mail.isEnabled()).thenReturn(true);
-        assertEquals(RequestResult.INVALID_EMAIL, service.requestLogin("nonsense", "1.1.1.1"));
-        assertEquals(RequestResult.INVALID_EMAIL, service.requestLogin("a@b.de\nBcc: x@y.de", "1.1.1.1"));
+        assertEquals(RequestResult.INVALID_EMAIL, service.requestLogin("nonsense", "1.1.1.1").result());
+        assertEquals(RequestResult.INVALID_EMAIL, service.requestLogin("a@b.de\nBcc: x@y.de", "1.1.1.1").result());
 
         when(mail.isEnabled()).thenReturn(false);
-        assertEquals(RequestResult.DISABLED, service.requestLogin("a@b.de", "1.1.1.1"));
+        assertEquals(RequestResult.DISABLED, service.requestLogin("a@b.de", "1.1.1.1").result());
         verify(repository, never()).replaceLoginToken(any());
     }
 
     @Test
     void localLinkLoggingEnablesLoginWithoutMail() {
         when(mail.isEnabled()).thenReturn(false);
-        AuthService local = new AuthService(repository, mail, "http://localhost:3000", true);
+        AuthService local = new AuthService(repository, mail, "http://localhost:3000", true, false);
         assertTrue(local.isLoginEnabled());
-        assertEquals(RequestResult.SENT, local.requestLogin("a@b.de", "1.1.1.1"));
+        assertEquals(RequestResult.SENT, local.requestLogin("a@b.de", "1.1.1.1").result());
         verify(mail, never()).send(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    void testEnvironmentReturnsTheCodeInsteadOfMailing() {
+        when(mail.isEnabled()).thenReturn(false);
+        AuthService test = new AuthService(repository, mail, "https://x.test", false, true);
+        assertTrue(test.isLoginEnabled());
+
+        AuthService.LoginRequest result = test.requestLogin("a@b.de", "1.1.1.1");
+
+        assertEquals(RequestResult.SENT, result.result());
+        assertTrue(result.devCode().matches("\\d{6}"));
+        ArgumentCaptor<LoginToken> stored = ArgumentCaptor.forClass(LoginToken.class);
+        verify(repository).replaceLoginToken(stored.capture());
+        assertEquals(AuthService.hash("a@b.de:" + result.devCode()), stored.getValue().codeHash());
+        verify(mail, never()).send(anyString(), anyString(), anyString());
+        assertNull(service.requestLogin("a@b.de", "2.2.2.2").devCode());
     }
 
     @Test
     void limitsRequestsPerAddress() {
         when(mail.isEnabled()).thenReturn(true);
         for (int i = 0; i < AuthService.MAX_REQUESTS_PER_EMAIL_PER_HOUR; i++) {
-            assertEquals(RequestResult.SENT, service.requestLogin("a@b.de", "1.1.1." + i));
+            assertEquals(RequestResult.SENT, service.requestLogin("a@b.de", "1.1.1." + i).result());
         }
-        assertEquals(RequestResult.RATE_LIMITED, service.requestLogin("a@b.de", "9.9.9.9"));
-        assertEquals(RequestResult.SENT, service.requestLogin("other@b.de", "9.9.9.9"));
+        assertEquals(RequestResult.RATE_LIMITED, service.requestLogin("a@b.de", "9.9.9.9").result());
+        assertEquals(RequestResult.SENT, service.requestLogin("other@b.de", "9.9.9.9").result());
     }
 
     @Test

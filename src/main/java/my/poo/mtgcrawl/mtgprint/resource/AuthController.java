@@ -69,13 +69,22 @@ public class AuthController {
         return response.body(body);
     }
 
+    /** Antwort: {"status": "sent"}; in Testumgebungen (auth.dev-show-code) zusätzlich {"devCode": "123456"}. */
     @PostMapping("/login/request")
-    public ResponseEntity<String> requestLogin(@RequestBody Map<String, String> body, HttpServletRequest request) {
-        return switch (authService.requestLogin(body.get("email"), request.getRemoteAddr())) {
-            case SENT -> ResponseEntity.ok("sent");
-            case INVALID_EMAIL -> ResponseEntity.badRequest().body("Invalid email address");
-            case DISABLED -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body("Login is not available");
-            case RATE_LIMITED -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body("Too many login requests, try again later");
+    public ResponseEntity<Map<String, Object>> requestLogin(@RequestBody Map<String, String> body, HttpServletRequest request) {
+        AuthService.LoginRequest result = authService.requestLogin(body.get("email"), request.getRemoteAddr());
+        return switch (result.result()) {
+            case SENT -> {
+                Map<String, Object> ok = new LinkedHashMap<>();
+                ok.put("status", "sent");
+                if (result.devCode() != null) {
+                    ok.put("devCode", result.devCode());
+                }
+                yield ResponseEntity.ok(ok);
+            }
+            case INVALID_EMAIL -> ResponseEntity.badRequest().build();
+            case DISABLED -> ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+            case RATE_LIMITED -> ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).build();
         };
     }
 
