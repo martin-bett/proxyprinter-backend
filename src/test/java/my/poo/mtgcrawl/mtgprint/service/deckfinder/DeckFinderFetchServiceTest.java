@@ -53,7 +53,7 @@ class DeckFinderFetchServiceTest {
     void rejectsForeignLinksAndBrokenPatterns() {
         DeckFinderException foreign = assertThrows(DeckFinderException.class,
                 () -> DeckFinderFetchService.resolveDeckId(ARCHIDEKT, "https://www.moxfield.com/decks/abc"));
-        assertTrue(foreign.getMessage().contains("passt nicht"));
+        assertTrue(foreign.getMessage().contains("does not match"));
         DeckFinderException noGroup = assertThrows(DeckFinderException.class,
                 () -> DeckFinderFetchService.resolveDeckId("archidekt\\.com/decks/(\\d+)", "https://archidekt.com/decks/1"));
         assertTrue(noGroup.getMessage().contains("(?<id>"));
@@ -85,7 +85,7 @@ class DeckFinderFetchServiceTest {
         assertEquals(HttpStatus.NOT_FOUND, e1.getStatus());
         DeckFinderException e2 = assertThrows(DeckFinderException.class, () -> local.fetchDeck(archidekt(), "2"));
         assertEquals(HttpStatus.BAD_GATEWAY, e2.getStatus());
-        assertTrue(e2.getMessage().contains("blockt"));
+        assertEquals("deckfinder.blocked", e2.getCode());
     }
 
     @Test

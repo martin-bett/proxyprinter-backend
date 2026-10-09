@@ -1,5 +1,6 @@
 package my.poo.mtgcrawl.mtgprint.resource;
 
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -111,15 +112,15 @@ public class GalleryConfigController {
             HttpServletRequest httpRequest) {
         VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
         if (!configId.isPublished() && !galleryConfigService.checkVisitorIdentifier(configId, visitorIdentifier)) {
-            throw new GallerySourceException(HttpStatus.NOT_FOUND, "Gallery-Config nicht gefunden.");
+            throw new GallerySourceException(HttpStatus.NOT_FOUND, "gallery.configNotFound", "Gallery config not found.", Map.of());
         }
         GalleryFetchService.GalleryResponse response = galleryFetchService.fetch(configId, input);
         return ResponseEntity.ok().contentType(MediaType.parseMediaType(response.contentType())).body(response.body());
     }
 
     @ExceptionHandler(GallerySourceException.class)
-    public ResponseEntity<Map<String, String>> handle(GallerySourceException e) {
-        return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getMessage()));
+    public ResponseEntity<Map<String, Object>> handle(GallerySourceException e) {
+        return ResponseEntity.status(e.getStatus()).body(e.toBody());
     }
 
     @PostMapping("/{configId}/rate")

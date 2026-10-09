@@ -125,16 +125,17 @@ class PDFGenerationManagerServiceTest {
             first.setEmail("one@example.com");
             CreatePdfDto second = request("a");
             second.setEmail("two@example.com");
+            second.setLanguage("de");
 
             String id = manager.submitJob(first);
             assertEquals(id, manager.submitJob(second), "email must not change the progress id");
             assertEquals(id, manager.submitJob(request("a")));
 
             release.countDown();
-            verify(mail, timeout(5000)).sendReady("one@example.com", id, 42);
-            verify(mail, timeout(5000)).sendReady("two@example.com", id, 42);
+            verify(mail, timeout(5000)).sendReady("one@example.com", "en", id, 42);
+            verify(mail, timeout(5000)).sendReady("two@example.com", "de", id, 42);
             verify(generation, times(1)).generateDocument(any());
-            verify(mail, never()).sendFailed(any(), any());
+            verify(mail, never()).sendFailed(any(), any(), any());
         } finally {
             manager.shutdown();
         }
@@ -152,13 +153,13 @@ class PDFGenerationManagerServiceTest {
             CreatePdfDto failing = request("a");
             failing.setEmail("one@example.com");
             manager.submitJob(failing);
-            verify(mail, timeout(5000)).sendFailed("one@example.com", "boom");
+            verify(mail, timeout(5000)).sendFailed("one@example.com", "en", "boom");
 
             when(cache.getFromCache(any())).thenReturn(new byte[] { 1, 2, 3 });
             CreatePdfDto cached = request("b");
             cached.setEmail("two@example.com");
             String id = manager.submitJob(cached);
-            verify(mail).sendReady("two@example.com", id, 3);
+            verify(mail).sendReady("two@example.com", "en", id, 3);
         } finally {
             manager.shutdown();
         }

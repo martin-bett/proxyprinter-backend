@@ -43,11 +43,12 @@ public class GalleryHttp {
         try {
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException e) {
-            throw new GallerySourceException(HttpStatus.BAD_GATEWAY,
-                    request.uri().getHost() + " nicht erreichbar: " + e.getMessage());
+            throw new GallerySourceException(HttpStatus.BAD_GATEWAY, "gallery.unreachable",
+                    request.uri().getHost() + " not reachable: " + e.getMessage(),
+                    Map.of("host", String.valueOf(request.uri().getHost()), "detail", String.valueOf(e.getMessage())));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new GallerySourceException(HttpStatus.SERVICE_UNAVAILABLE, "Abgebrochen");
+            throw new GallerySourceException(HttpStatus.SERVICE_UNAVAILABLE, "gallery.cancelled", "Cancelled", Map.of());
         }
     }
 }

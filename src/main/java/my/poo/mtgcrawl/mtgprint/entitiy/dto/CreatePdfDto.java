@@ -17,5 +17,8 @@ public class CreatePdfDto {
     /** Wird nur vom Backend aus dem Konto gesetzt, nie vom Client übernommen. An diese Adresse geht ein Download-Link, sobald das PDF fertig ist. */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String email;
+    /** Optional: language of the mail (ISO 639-1, e.g. "de"); unknown or missing means English. */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String language;
 
 }
