@@ -58,6 +58,12 @@ public class FileUploadService {
         }
     }
 
+    /** Anzahl der hochgeladenen Bilder, die gerade aufbewahrt werden, für /api/stats. */
+    public long countTempFiles() {
+        File[] files = new File(IMG_TEMP_FOLDER).listFiles(File::isFile);
+        return files == null ? 0 : files.length;
+    }
+
     /**
      * Setzt die Aufbewahrungszeit eines hochgeladenen Bildes zurück. Das Frontend ruft das
      * auf, wenn ein Snapshot mit diesem Bild gespeichert oder geladen wird, damit das Bild

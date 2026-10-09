@@ -24,6 +24,7 @@ import jakarta.annotation.PreDestroy;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto.Category;
+import my.poo.mtgcrawl.mtgprint.service.stats.DeckStatsRepository;
 
 /**
  * Nimmt PDF-Aufträge an, stellt sie in eine Warteschlange und baut höchstens
@@ -38,6 +39,7 @@ public class PDFGenerationManagerService {
     private final PDFGenerationService pdfGenerationService;
     private final PdfCacheService pdfCacheService;
     private final PdfMailNotifier mailNotifier;
+    private final DeckStatsRepository deckStats;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final int maxConcurrent;
     private final ExecutorService executor;
@@ -47,10 +49,11 @@ public class PDFGenerationManagerService {
     private int activeJobs = 0;
 
     public PDFGenerationManagerService(PDFGenerationService pdfGenerationService, PdfCacheService pdfCacheService,
-            PdfMailNotifier mailNotifier, @Value("${pdf.max-concurrent:2}") int maxConcurrent) {
+            PdfMailNotifier mailNotifier, DeckStatsRepository deckStats, @Value("${pdf.max-concurrent:2}") int maxConcurrent) {
         this.pdfGenerationService = pdfGenerationService;
         this.pdfCacheService = pdfCacheService;
         this.mailNotifier = mailNotifier;
+        this.deckStats = deckStats;
         this.maxConcurrent = Math.max(1, maxConcurrent);
         this.executor = Executors.newFixedThreadPool(this.maxConcurrent);
     }
@@ -107,6 +110,7 @@ public class PDFGenerationManagerService {
         executor.submit(() -> {
             try {
                 pdfGenerationService.generateDocument(job);
+                deckStats.countCreated();
                 long fileSize = job.progressHistory.isEmpty() ? 0 : last(job.progressHistory).getFileSize();
                 job.emailRecipients.forEach((to, lang) -> mailNotifier.sendReady(to, lang, job.progressId, fileSize));
             } catch (Throwable e) {

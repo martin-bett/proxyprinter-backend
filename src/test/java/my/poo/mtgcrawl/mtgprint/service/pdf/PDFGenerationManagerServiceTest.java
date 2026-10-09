@@ -14,6 +14,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ImageDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto.Category;
+import my.poo.mtgcrawl.mtgprint.service.stats.DeckStatsRepository;
 
 class PDFGenerationManagerServiceTest {
 
@@ -41,7 +42,7 @@ class PDFGenerationManagerServiceTest {
             return null;
         }).when(generation).generateDocument(any());
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), 1);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), mock(DeckStatsRepository.class), 1);
         try {
             String first = manager.submitJob(request("a"));
             String second = manager.submitJob(request("b"));
@@ -69,7 +70,7 @@ class PDFGenerationManagerServiceTest {
         PdfCacheService cache = mock(PdfCacheService.class);
         when(cache.getFromCache(any())).thenReturn(new byte[] { 1, 2, 3 });
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), 2);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), mock(DeckStatsRepository.class), 2);
         try {
             String id = manager.submitJob(request("a"));
             ProgressDto dto = last(manager.getProgressHistory(id));
@@ -88,7 +89,7 @@ class PDFGenerationManagerServiceTest {
         PdfCacheService cache = mock(PdfCacheService.class);
         doThrow(new IllegalStateException("boom")).when(generation).generateDocument(any());
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), 1);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mock(PdfMailNotifier.class), mock(DeckStatsRepository.class), 1);
         try {
             String id = manager.submitJob(request("a"));
             ProgressDto dto = null;
@@ -119,7 +120,8 @@ class PDFGenerationManagerServiceTest {
             return null;
         }).when(generation).generateDocument(any());
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mail, 1);
+        DeckStatsRepository stats = mock(DeckStatsRepository.class);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mail, stats, 1);
         try {
             CreatePdfDto first = request("a");
             first.setEmail("one@example.com");
@@ -136,6 +138,7 @@ class PDFGenerationManagerServiceTest {
             verify(mail, timeout(5000)).sendReady("two@example.com", "de", id, 42);
             verify(generation, times(1)).generateDocument(any());
             verify(mail, never()).sendFailed(any(), any(), any());
+            verify(stats, times(1)).countCreated();
         } finally {
             manager.shutdown();
         }
@@ -148,7 +151,8 @@ class PDFGenerationManagerServiceTest {
         PdfMailNotifier mail = mock(PdfMailNotifier.class);
         doThrow(new IllegalStateException("boom")).when(generation).generateDocument(any());
 
-        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mail, 1);
+        DeckStatsRepository stats = mock(DeckStatsRepository.class);
+        PDFGenerationManagerService manager = new PDFGenerationManagerService(generation, cache, mail, stats, 1);
         try {
             CreatePdfDto failing = request("a");
             failing.setEmail("one@example.com");
@@ -160,6 +164,7 @@ class PDFGenerationManagerServiceTest {
             cached.setEmail("two@example.com");
             String id = manager.submitJob(cached);
             verify(mail).sendReady("two@example.com", "en", id, 3);
+            verify(stats, never()).countCreated();
         } finally {
             manager.shutdown();
         }
