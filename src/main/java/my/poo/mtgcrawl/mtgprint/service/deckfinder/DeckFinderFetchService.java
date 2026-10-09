@@ -60,7 +60,7 @@ public class DeckFinderFetchService {
 
     public DeckFinderResponse fetchDeck(DeckFinderConfig config, String input) {
         if (isBlank(config.getFetchUrl())) {
-            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Die Config hat keine Fetch URL.");
+            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.noFetchUrl", "The config has no fetch URL.", Map.of());
         }
         String id = resolveDeckId(config.getLinkPattern(), input);
         String url = fillTemplate(config.getFetchUrl(), Map.of("id", id));
@@ -70,20 +70,20 @@ public class DeckFinderFetchService {
 
     public DeckFinderResponse search(DeckFinderConfig config, String query, int page) {
         if (isBlank(config.getSearchUrl())) {
-            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Diese Quelle bietet keine Suche per Name.");
+            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.noNameSearch", "This source does not support search by name.", Map.of());
         }
         if (isBlank(query)) {
-            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Bitte einen Namen eingeben.");
+            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.nameRequired", "Please enter a name.", Map.of());
         }
         String url = fillTemplate(config.getSearchUrl(), Map.of("query", query.trim(), "page", String.valueOf(Math.max(1, page))));
-        return load(url, "application/json", "Suche");
+        return load(url, "application/json", "Search");
     }
 
     /** Liest die Deck-ID aus einem Link (Gruppe "id" der Regex) oder nimmt die Eingabe selbst als ID. */
     static String resolveDeckId(String linkPattern, String input) {
         String value = input == null ? "" : input.trim();
         if (value.isEmpty()) {
-            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Bitte einen Deck-Link oder eine ID eingeben.");
+            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.deckRequired", "Please enter a deck link or ID.", Map.of());
         }
         if (!isBlank(linkPattern)) {
             try {
@@ -92,15 +92,16 @@ public class DeckFinderFetchService {
                     return m.group("id");
                 }
             } catch (PatternSyntaxException e) {
-                throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Link Pattern ist keine gültige Regex: " + e.getDescription());
+                throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.invalidLinkPattern",
+                        "Link Pattern is not a valid regex: " + e.getDescription(), Map.of("description", e.getDescription()));
             } catch (IllegalArgumentException e) {
-                throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Link Pattern braucht eine Gruppe (?<id>...).");
+                throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.linkPatternNoGroup", "Link Pattern needs a group (?<id>...).", Map.of());
             }
         }
         if (PLAIN_ID.matcher(value).matches()) {
             return value;
         }
-        throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Link passt nicht zu dieser Quelle.");
+        throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.linkMismatch", "Link does not match this source.", Map.of());
     }
 
     /** Ersetzt {name} durch den URL-kodierten Wert. */
@@ -125,14 +126,18 @@ public class DeckFinderFetchService {
         HttpResponse<String> response = http.get(uri);
         int status = response.statusCode();
         if (status == 404 || status == 410) {
-            throw new DeckFinderException(HttpStatus.NOT_FOUND, what + " nicht gefunden (privat oder gelöscht?).");
+            throw new DeckFinderException(HttpStatus.NOT_FOUND, "Deck".equals(what) ? "deckfinder.deckNotFound" : "deckfinder.searchNotFound",
+                    what + " not found (private or deleted?).", Map.of());
         }
         if (status == 401 || status == 403 || status == 429 || status == 503) {
-            throw new DeckFinderException(HttpStatus.BAD_GATEWAY,
-                    uri.getHost() + " blockt den Abruf (HTTP " + status + ").");
+            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, "deckfinder.blocked",
+                    uri.getHost() + " blocks the request (HTTP " + status + ").",
+                    Map.of("host", uri.getHost(), "status", String.valueOf(status)));
         }
         if (status >= 400) {
-            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, uri.getHost() + " antwortet mit HTTP " + status + ".");
+            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, "deckfinder.httpError",
+                    uri.getHost() + " responded with HTTP " + status + ".",
+                    Map.of("host", uri.getHost(), "status", String.valueOf(status)));
         }
         DeckFinderResponse result = new DeckFinderResponse(contentType, response.body());
         synchronized (cache) {
@@ -151,22 +156,22 @@ public class DeckFinderFetchService {
         try {
             uri = URI.create(url);
         } catch (IllegalArgumentException e) {
-            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Ungültige URL: " + url);
+            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.invalidUrl", "Invalid URL: " + url, Map.of("url", url));
         }
         String scheme = uri.getScheme();
         if (uri.getHost() == null || scheme == null
                 || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))) {
-            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Nur http(s)-URLs sind erlaubt: " + url);
+            throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.httpOnly", "Only http(s) URLs are allowed: " + url, Map.of("url", url));
         }
         try {
             for (InetAddress address : InetAddress.getAllByName(uri.getHost())) {
                 if (address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()
                         || address.isAnyLocalAddress()) {
-                    throw new DeckFinderException(HttpStatus.BAD_REQUEST, "Interne Adressen sind nicht erlaubt.");
+                    throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.internalAddress", "Internal addresses are not allowed.", Map.of());
                 }
             }
         } catch (UnknownHostException e) {
-            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, uri.getHost() + " nicht gefunden.");
+            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, "deckfinder.hostNotFound", uri.getHost() + " not found.", Map.of("host", uri.getHost()));
         }
         return uri;
     }

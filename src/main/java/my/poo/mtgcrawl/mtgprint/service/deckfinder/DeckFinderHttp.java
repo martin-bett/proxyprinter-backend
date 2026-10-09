@@ -1,5 +1,6 @@
 package my.poo.mtgcrawl.mtgprint.service.deckfinder;
 
+import java.util.Map;
 import java.io.IOException;
 import java.net.ProxySelector;
 import java.net.URI;
@@ -38,10 +39,12 @@ public class DeckFinderHttp {
         try {
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException e) {
-            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, uri.getHost() + " nicht erreichbar: " + e.getMessage());
+            throw new DeckFinderException(HttpStatus.BAD_GATEWAY, "deckfinder.unreachable",
+                    uri.getHost() + " not reachable: " + e.getMessage(),
+                    Map.of("host", uri.getHost(), "detail", String.valueOf(e.getMessage())));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new DeckFinderException(HttpStatus.SERVICE_UNAVAILABLE, "Abgebrochen");
+            throw new DeckFinderException(HttpStatus.SERVICE_UNAVAILABLE, "deckfinder.cancelled", "Cancelled", Map.of());
         }
     }
 }

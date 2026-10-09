@@ -135,7 +135,7 @@ class GalleryFetchServiceTest {
         GallerySourceException blocked = assertThrows(GallerySourceException.class,
                 () -> service.fetch(reddit(), "reddit.com/comments/1abc23x"));
         assertEquals(HttpStatus.BAD_GATEWAY, blocked.getStatus());
-        assertTrue(blocked.getMessage().contains("blockt"));
+        assertEquals("gallery.blockedCredential", blocked.getCode());
 
         stub(url, response(url, 404, "", null));
         assertEquals(HttpStatus.NOT_FOUND,
@@ -146,7 +146,7 @@ class GalleryFetchServiceTest {
     void reportsMissingServerCredential() {
         GallerySourceException e = assertThrows(GallerySourceException.class,
                 () -> service.fetch(reddit(), "reddit.com/comments/1abc23x"));
-        assertTrue(e.getMessage().contains("nicht eingerichtet"));
+        assertTrue(e.getMessage().contains("not set up"));
     }
 
     @Test
