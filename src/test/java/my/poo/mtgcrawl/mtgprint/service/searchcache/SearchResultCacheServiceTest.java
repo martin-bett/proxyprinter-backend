@@ -43,6 +43,18 @@ class SearchResultCacheServiceTest {
     }
 
     @Test
+    void countsEntriesButNotTempFiles() throws Exception {
+        SearchResultCacheService cache = cache(7);
+        assertEquals(0, cache.countEntries());
+        cache.put("12", "abc", "Lightning Bolt", result("Lightning Bolt"));
+        cache.put("12", "abc", "lightning bolt", result("Lightning Bolt"));
+        cache.put("7", "abc", "Counterspell", result("Counterspell"));
+        Files.writeString(dir.resolve("12").resolve("put-1.tmp"), "half");
+
+        assertEquals(2, cache.countEntries());
+    }
+
+    @Test
     void changedConfigOrOtherTermIsAMiss() throws Exception {
         SearchResultCacheService cache = cache(7);
         cache.put("12", "abc", "Lightning Bolt", result("Lightning Bolt"));

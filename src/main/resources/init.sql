@@ -196,6 +196,22 @@ CREATE TABLE proxymaster.user_session (
 );
 CREATE INDEX user_session_user_idx ON proxymaster.user_session (user_id);
 
+-- Besitz von Configs und Ratings (sql/2026-10-09_config_owner.sql)
+ALTER TABLE proxymaster.api_config ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+ALTER TABLE proxymaster.gallery_config ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+ALTER TABLE proxymaster.deck_finder_config ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+ALTER TABLE proxymaster.ratings ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+CREATE INDEX api_config_user_idx ON proxymaster.api_config (user_id);
+CREATE INDEX gallery_config_user_idx ON proxymaster.gallery_config (user_id);
+CREATE INDEX deck_finder_config_user_idx ON proxymaster.deck_finder_config (user_id);
+CREATE UNIQUE INDEX ratings_user_config_idx ON proxymaster.ratings (user_id, api_config_id) WHERE user_id IS NOT NULL;
+
+-- Fertig erzeugte PDFs pro Tag (UTC), für /api/stats
+CREATE TABLE proxymaster.deck_stats (
+    day date PRIMARY KEY,
+    created int NOT NULL DEFAULT 0
+);
+
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(1, 'MTG'::proxymaster."api_category", 'https://aetherhub.com/', 'aetherhub', false, 'GET', NULL, 'https://aetherhub.com/Card/Search', 2, 'html', NULL, NULL, NULL, true, 'div#cards>div', 'div.item-hidden-text | innerText', NULL, 'img | attr:data-src', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);

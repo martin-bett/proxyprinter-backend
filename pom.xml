@@ -17,6 +17,8 @@
 	<properties>
 		<java.version>25</java.version>
 		<twelvemonkeys.version>3.15.2</twelvemonkeys.version>
+		<!-- Build-Nummer = Build-Zeitpunkt in UTC, auf Minuten genau (z. B. 20261009-1347) -->
+		<maven.build.timestamp.format>yyyyMMdd-HHmm</maven.build.timestamp.format>
 	</properties>
 	<dependencies>
 
@@ -163,6 +165,19 @@
 			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<!-- META-INF/build-info.properties, gelesen von VersionController -->
+						<goals>
+							<goal>build-info</goal>
+						</goals>
+						<configuration>
+							<additionalProperties>
+								<number>${maven.build.timestamp}</number>
+							</additionalProperties>
+						</configuration>
+					</execution>
+				</executions>
 				<configuration>
 					<excludes>
 						<exclude>
