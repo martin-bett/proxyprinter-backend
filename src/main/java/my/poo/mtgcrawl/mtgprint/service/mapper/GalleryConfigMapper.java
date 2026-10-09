@@ -16,6 +16,7 @@ public interface GalleryConfigMapper {
 
     @Mapping(target = "parameters", expression = "java(mapMapToParameters(dto.getParameterMap()))")
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
+    @Mapping(target = "userId", ignore = true)
     GalleryConfig toEntity(GalleryConfigDto dto); 
 
     @Mapping(target = "parameterMap", expression = "java(mapParametersToMap(apiConfig.getParameters()))")

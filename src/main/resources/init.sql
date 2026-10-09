@@ -196,6 +196,16 @@ CREATE TABLE proxymaster.user_session (
 );
 CREATE INDEX user_session_user_idx ON proxymaster.user_session (user_id);
 
+-- Besitz von Configs und Ratings (sql/2026-10-09_config_owner.sql)
+ALTER TABLE proxymaster.api_config ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+ALTER TABLE proxymaster.gallery_config ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+ALTER TABLE proxymaster.deck_finder_config ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+ALTER TABLE proxymaster.ratings ADD COLUMN user_id bigint REFERENCES proxymaster.app_user (id) ON DELETE SET NULL;
+CREATE INDEX api_config_user_idx ON proxymaster.api_config (user_id);
+CREATE INDEX gallery_config_user_idx ON proxymaster.gallery_config (user_id);
+CREATE INDEX deck_finder_config_user_idx ON proxymaster.deck_finder_config (user_id);
+CREATE UNIQUE INDEX ratings_user_config_idx ON proxymaster.ratings (user_id, api_config_id) WHERE user_id IS NOT NULL;
+
 -- Fertig erzeugte PDFs pro Tag (UTC), für /api/stats
 CREATE TABLE proxymaster.deck_stats (
     day date PRIMARY KEY,

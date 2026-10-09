@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
+
 class ImageFetchServiceTest {
 
     // 1x1 PNG
@@ -60,7 +62,7 @@ class ImageFetchServiceTest {
 
     @Test
     void folgtUmleitungenBisZumBild() {
-        ImageFetchService service = new ImageFetchService();
+        ImageFetchService service = new ImageFetchService(new OutboundUrlGuard(true));
         ImageFetchService.Image image = service.fetch(base + "/Handlers/Image.ashx?multiverseid=405126&type=card");
         assertArrayEquals(PNG, image.content());
         assertEquals("image/png", image.contentType());
@@ -68,7 +70,7 @@ class ImageFetchServiceTest {
 
     @Test
     void htmlStattBildIstEinFehlerUndWirdGemerkt() {
-        ImageFetchService service = new ImageFetchService();
+        ImageFetchService service = new ImageFetchService(new OutboundUrlGuard(true));
         String url = base + "/page";
         var e = assertThrows(ImageFetchService.ImageFetchException.class, () -> service.fetch(url));
         assertTrue(e.getMessage().startsWith("kein Bild (text/html"), e.getMessage());
@@ -78,7 +80,7 @@ class ImageFetchServiceTest {
 
     @Test
     void httpFehlerWirdGemeldet() {
-        ImageFetchService service = new ImageFetchService();
+        ImageFetchService service = new ImageFetchService(new OutboundUrlGuard(true));
         var e = assertThrows(ImageFetchService.ImageFetchException.class, () -> service.fetch(base + "/gone"));
         assertEquals("HTTP 404", e.getMessage());
     }

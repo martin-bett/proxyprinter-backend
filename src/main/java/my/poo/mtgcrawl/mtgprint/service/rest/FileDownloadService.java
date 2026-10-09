@@ -43,12 +43,12 @@ public class FileDownloadService {
         }
     
         // Wenn die Datei nicht existiert, fahren Sie mit dem Download fort
-        String finalUrl = followRedirects(url);
+        // Weiterleitungen folgt das RestTemplate selbst (GuardedRequestFactory)
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
         HttpEntity<byte[]> entity = new HttpEntity<>(headers);
     
-        ResponseEntity<byte[]> response = restTemplate.exchange(finalUrl, HttpMethod.GET, entity, byte[].class);
+        ResponseEntity<byte[]> response = restTemplate.exchange(url, HttpMethod.GET, entity, byte[].class);
         
         if (response.getStatusCode() == HttpStatus.OK) {
             byte[] fileContent = response.getBody();
@@ -96,18 +96,4 @@ public class FileDownloadService {
         }
     }
 
-    private String followRedirects(String url) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setAccept(List.of(MediaType.APPLICATION_OCTET_STREAM));
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-    
-        if (response.getStatusCode().is3xxRedirection()) {
-            String newUrl = response.getHeaders().getLocation().toString();
-            return followRedirects(newUrl);
-        }
-    
-        return url;
-    }
 }

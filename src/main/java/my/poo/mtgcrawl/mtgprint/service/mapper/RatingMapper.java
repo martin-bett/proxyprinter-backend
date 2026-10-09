@@ -21,6 +21,7 @@ public interface RatingMapper {
   @Mapping(source = "scoreQuality", target = "scoreQuality")
   @Mapping(target = "id", ignore = true)
   @Mapping(target = "visitorIdentifier", ignore = true)
+  @Mapping(target = "userId", ignore = true)
   @Mapping(target = "comment", ignore = true)
   @Mapping(target = "createdAt", expression = "java(java.time.LocalDateTime.now())")
   Rating toEntity(RatingDto dto);

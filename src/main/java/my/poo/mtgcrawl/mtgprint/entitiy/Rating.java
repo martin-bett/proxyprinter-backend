@@ -18,7 +18,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "ratings",
 uniqueConstraints = @UniqueConstraint(
-        columnNames = {"ip_address", "browser_fingerprint", "api_config_id"}
+        columnNames = {"user_id", "api_config_id"}
     ))
 @Getter
 @Setter
@@ -29,7 +29,11 @@ public class Rating {
     private Long id;
     
     @Embedded
-    private VisitorIdentifier visitorIdentifier; // Speichert IP oder Fingerprint
+    private VisitorIdentifier visitorIdentifier; // nur alte, anonyme Ratings
+
+    // Konto, das bewertet hat; alte Ratings aus der Fingerprint-Zeit haben keins
+    @Column(name = "user_id")
+    private Long userId;
     
     @ManyToOne
     @JoinColumn(name = "api_config_id")

@@ -14,13 +14,15 @@ import org.junit.jupiter.api.Test;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
+
 class ApiProbeServiceTest {
 
     private HttpServer server;
     private String base;
     private final AtomicReference<String> lastBody = new AtomicReference<>();
     private final AtomicReference<String> lastType = new AtomicReference<>();
-    private final ApiProbeService service = new ApiProbeService();
+    private final ApiProbeService service = new ApiProbeService(new OutboundUrlGuard(true));
 
     @BeforeEach
     void start() throws IOException {
@@ -80,5 +82,13 @@ class ApiProbeServiceTest {
         ApiProbeService.ProbeResult r = service.probe(new ApiProbeService.ProbeRequest("file:///etc/passwd", "GET", null, null));
         assertEquals(0, r.status());
         assertNotNull(r.error());
+    }
+
+    @Test
+    void rejectsInternalAddresses() {
+        ApiProbeService strict = new ApiProbeService(new OutboundUrlGuard(false));
+        ApiProbeService.ProbeResult r = strict.probe(new ApiProbeService.ProbeRequest(base + "/search", "GET", null, null));
+        assertEquals(0, r.status());
+        assertEquals("Internal addresses are not allowed.", r.error());
     }
 }

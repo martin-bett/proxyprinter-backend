@@ -18,16 +18,14 @@ import java.util.stream.Collectors;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.GalleryConfig;
-import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.GalleryConfigDto;
-import my.poo.mtgcrawl.mtgprint.entitiy.dto.RatingRequest;
 import my.poo.mtgcrawl.mtgprint.repository.GalleryConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.gallery.GalleryFetchService;
 import my.poo.mtgcrawl.mtgprint.service.gallery.GallerySourceException;
 import my.poo.mtgcrawl.mtgprint.service.mapper.GalleryConfigMapper;
 import my.poo.mtgcrawl.mtgprint.service.rest.GalleryConfigService;
-import my.poo.mtgcrawl.mtgprint.service.rest.RatingService;
 
+/** Galerie-Configs: benutzen geht ohne Konto (veröffentlichte), anlegen, kopieren und bearbeiten nur mit Konto. */
 @RestController
 @RequestMapping("/api/gallery")
 @AllArgsConstructor
@@ -35,42 +33,37 @@ public class GalleryConfigController {
 
     private final GalleryConfigRepository galleryConfigRepository;
     private final GalleryConfigService galleryConfigService;
-    private final RatingService ratingService;
     private final GalleryFetchService galleryFetchService;
+    private final CurrentUser currentUser;
 
     private final GalleryConfigMapper mapper;
     @GetMapping
     public List<GalleryConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorId = extractVisitorIdentifier(httpRequest);
-        return galleryConfigRepository.findAllVisible(visitorId)
+        return galleryConfigRepository.findAllVisible(currentUser.idOrNull(httpRequest))
             .stream()
-            .map(this::toDTO)
+            .map(mapper::toDTO)
             .collect(Collectors.toList());
     }
     
     @GetMapping("/create")
-    public ResponseEntity<Long> createConfig(
-            HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = galleryConfigService.createConfig(visitorIdentifier);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Long> createConfig(HttpServletRequest httpRequest) {
+        long userId = currentUser.require(httpRequest);
+        return ResponseEntity.ok(galleryConfigService.createConfig(userId, httpRequest.getRemoteAddr()));
     }   
 
     @PostMapping("/copy")
     public ResponseEntity<Long> copyConfig(
             @RequestBody GalleryConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = galleryConfigService.copyConfig(request, visitorIdentifier);
-        return ResponseEntity.ok(result);
+        long userId = currentUser.require(httpRequest);
+        return ResponseEntity.ok(galleryConfigService.copyConfig(request, userId, httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/delete")
     public ResponseEntity<?> deleteConfig(
             @RequestBody GalleryConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        galleryConfigService.deleteConfig(request, visitorIdentifier);
+        galleryConfigService.deleteConfig(request, currentUser.require(httpRequest));
         return ResponseEntity.ok().build();
     }
 
@@ -78,27 +71,22 @@ public class GalleryConfigController {
     public ResponseEntity<Long> publishConfig(
             @RequestBody GalleryConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = galleryConfigService.publishConfig(request, visitorIdentifier);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(galleryConfigService.publishConfig(request, currentUser.require(httpRequest)));
     }
 
     @PostMapping("/edit")
     public ResponseEntity<Long> editConfig(
             @RequestBody GalleryConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = galleryConfigService.editConfig(request, visitorIdentifier);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(galleryConfigService.editConfig(request, currentUser.require(httpRequest)));
     }
 
+    /** Darf der Besucher die Config bearbeiten? Ohne Konto immer false. */
     @GetMapping("/{configId}/check")
-    public ResponseEntity<Boolean> createConfig(
+    public ResponseEntity<Boolean> checkOwner(
             @PathVariable GalleryConfig configId,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        boolean res = galleryConfigService.checkVisitorIdentifier(configId, visitorIdentifier);
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(GalleryConfigService.isOwner(configId, currentUser.idOrNull(httpRequest)));
     }
     
     /**
@@ -110,8 +98,7 @@ public class GalleryConfigController {
             @PathVariable GalleryConfig configId,
             @RequestParam(value = "input", required = false) String input,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        if (!configId.isPublished() && !galleryConfigService.checkVisitorIdentifier(configId, visitorIdentifier)) {
+        if (!GalleryConfigService.isVisible(configId, currentUser.idOrNull(httpRequest))) {
             throw new GallerySourceException(HttpStatus.NOT_FOUND, "gallery.configNotFound", "Gallery config not found.", Map.of());
         }
         GalleryFetchService.GalleryResponse response = galleryFetchService.fetch(configId, input);
@@ -121,27 +108,5 @@ public class GalleryConfigController {
     @ExceptionHandler(GallerySourceException.class)
     public ResponseEntity<Map<String, Object>> handle(GallerySourceException e) {
         return ResponseEntity.status(e.getStatus()).body(e.toBody());
-    }
-
-    @PostMapping("/{configId}/rate")
-    public ResponseEntity<?> rateConfig(
-            @PathVariable GalleryConfig configId,
-            @RequestBody RatingRequest request,
-            HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorId = extractVisitorIdentifier(httpRequest);
-        // ratingService.saveOrUpdateRating(visitorId, configId, request.getScore(), request.getComment(), request.getAction());
-        return ResponseEntity.ok().build();
-    }
-
-    private VisitorIdentifier extractVisitorIdentifier(HttpServletRequest request) {
-        String ip = request.getRemoteAddr();
-        String fingerprint = request.getHeader("X-Fingerprint");
-        return new VisitorIdentifier(ip, fingerprint);
-    }
-
-    private GalleryConfigDto toDTO(GalleryConfig apiconfig1) {
-        GalleryConfigDto d = mapper.toDTO(apiconfig1);
-        // ratingService.addRatingsToConfigDto(d);
-        return d;
     }
 }
