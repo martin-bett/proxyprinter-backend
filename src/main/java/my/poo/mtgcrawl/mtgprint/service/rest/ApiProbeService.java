@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Locale;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import my.poo.mtgcrawl.mtgprint.service.net.BlockedUrlException;
@@ -31,6 +32,7 @@ public class ApiProbeService {
     private final HttpClient client;
     private final OutboundUrlGuard guard;
 
+    @Autowired
     public ApiProbeService(OutboundUrlGuard guard) {
         this(HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)

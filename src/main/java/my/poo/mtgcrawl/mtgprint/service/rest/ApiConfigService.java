@@ -8,7 +8,6 @@ import java.util.Objects;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfig;
-import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ApiConfigDto;
 import my.poo.mtgcrawl.mtgprint.enums.ApiCategory;
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfigConnectedCard;
@@ -23,26 +22,55 @@ public class ApiConfigService {
     private ApiConfigRepository apiConfigRepository;
     private ApiConfigConnectedCardRepository connectedCardRepository;
     private ApiConfigMapper mapper;
-    
-    public Long createApiConfig(VisitorIdentifier visitorIdentifier) {
-        return apiConfigRepository.insertApiConfig("new config", ApiCategory.MISC.name(),visitorIdentifier.getIpAddress(),visitorIdentifier.getBrowserFingerprint());
+
+    /** Besitzt das Konto die Config? Nicht angemeldet (userId null) besitzt niemand etwas. */
+    public static boolean isOwner(ApiConfig config, Long userId) {
+        return config != null && userId != null && userId.equals(config.getUserId());
     }
 
-    public Long copyConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
-        List<Long> idList = apiConfigRepository.copyApiConfig(request.getId(), visitorIdentifier.getIpAddress(), visitorIdentifier.getBrowserFingerprint());
+    /** Veröffentlicht oder eigene: darf benutzt und kopiert werden. */
+    public static boolean isVisible(ApiConfig config, Long userId) {
+        return config != null && (config.isPublished() || isOwner(config, userId));
+    }
+
+    // ip_address markiert weiterhin „von Benutzern angelegt“ (Standard-Configs haben keine, die SQL-Skripte unter sql/ verlassen sich darauf)
+    public Long createApiConfig(long userId, String ip) {
+        return apiConfigRepository.insertApiConfig("new config", ApiCategory.MISC.name(), ip, userId);
+    }
+
+    public Long copyConfig(ApiConfigDto request, long userId, String ip) {
+        ApiConfig source = apiConfigRepository.findById(request.getId()).orElse(null);
+        if (!isVisible(source, userId)) {
+            return null;
+        }
+        List<Long> idList = apiConfigRepository.copyApiConfig(source.getId(), ip, userId);
         Long newId = idList != null && idList.size() > 0 ? idList.get(0) : null;
         if (newId != null) {
-            apiConfigRepository.copyConnectedCards(request.getId(), newId);
+            apiConfigRepository.copyConnectedCards(source.getId(), newId);
         }
         return newId;
     }
 
-    public void deleteConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
+    public void deleteConfig(ApiConfigDto request, long userId) {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
-        if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
-            connectedCardRepository.deleteByConfigIds(List.of(old.getId()));
-            apiConfigRepository.delete(old);
+        if (isOwner(old, userId)) {
+            deleteByIds(List.of(old.getId()));
         }
+    }
+
+    /** Beim Löschen eines Kontos: unveröffentlichte Configs weg, veröffentlichte bleiben ohne Besitzer (FK ON DELETE SET NULL). */
+    public int deleteUnpublishedOf(long userId) {
+        return deleteByIds(apiConfigRepository.findUnpublishedIdsOf(userId));
+    }
+
+    private int deleteByIds(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return 0;
+        }
+        apiConfigRepository.deleteParametersOf(ids);
+        apiConfigRepository.deleteConnectedCardsOf(ids);
+        apiConfigRepository.deleteRatingsOf(ids);
+        return apiConfigRepository.deleteByIds(ids);
     }
 
     // Frontend meldet die Configs einer Suche, damit sie nicht als unbenutzt gelöscht werden
@@ -54,23 +82,22 @@ public class ApiConfigService {
         }
     }
 
-    public boolean checkVisitorIdentifier(ApiConfig config, VisitorIdentifier visitorIdentifier) {
-        return visitorIdentifier != null && visitorIdentifier.equals(config.getVisitorIdentifier());
-    }
-
-    public Long editApiConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
+    public Long editApiConfig(ApiConfigDto request, long userId) {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
-        if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
-            ApiConfig config = mapper.toEntity(request);
-            config.setVisitorIdentifier(visitorIdentifier);
-            config.setLastUsed(LocalDateTime.now());
-            List<ApiConfigConnectedCard> connectedCards = config.getConnectedCards();
-            config.setConnectedCards(null);
-            ApiConfig saved = apiConfigRepository.save(config);
-            saveConnectedCards(saved, connectedCards);
-            return saved.getId();
+        if (!isOwner(old, userId)) {
+            return null;
         }
-        return null;
+        ApiConfig config = mapper.toEntity(request);
+        config.setVisitorIdentifier(old.getVisitorIdentifier());
+        config.setUserId(old.getUserId());
+        // Veröffentlichen geht nur über publish
+        config.setPublished(old.isPublished());
+        config.setLastUsed(LocalDateTime.now());
+        List<ApiConfigConnectedCard> connectedCards = config.getConnectedCards();
+        config.setConnectedCards(null);
+        ApiConfig saved = apiConfigRepository.save(config);
+        saveConnectedCards(saved, connectedCards);
+        return saved.getId();
     }
     
     // Listen werden komplett ersetzt: alte Zeilen löschen, neue in der übergebenen Reihenfolge anlegen
@@ -83,15 +110,14 @@ public class ApiConfigService {
         connectedCardRepository.saveAll(connectedCards);
     }
 
-    public Long publishConfig(ApiConfigDto request, VisitorIdentifier visitorIdentifier) {
+    public Long publishConfig(ApiConfigDto request, long userId) {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
-        if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
-            old.setPublished(request.getPublished());
-            old.setLastUsed(LocalDateTime.now());
-            apiConfigRepository.save(old);
-            return old.getId();
-        } else {
+        if (!isOwner(old, userId)) {
             return null;
         }
+        old.setPublished(Boolean.TRUE.equals(request.getPublished()));
+        old.setLastUsed(LocalDateTime.now());
+        apiConfigRepository.save(old);
+        return old.getId();
     }
 }

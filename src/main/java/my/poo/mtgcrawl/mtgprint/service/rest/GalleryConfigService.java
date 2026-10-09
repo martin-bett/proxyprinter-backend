@@ -6,7 +6,6 @@ import java.util.List;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.GalleryConfig;
-import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.GalleryConfigDto;
 import my.poo.mtgcrawl.mtgprint.enums.ApiCategory;
 import my.poo.mtgcrawl.mtgprint.repository.GalleryConfigRepository;
@@ -18,45 +17,70 @@ import my.poo.mtgcrawl.mtgprint.service.mapper.GalleryConfigMapper;
 public class GalleryConfigService {
     private GalleryConfigRepository galleryConfigRepository;
     private GalleryConfigMapper mapper;
-    
-    public Long createConfig(VisitorIdentifier visitorIdentifier) {
-        return galleryConfigRepository.insertGalleryConfig("new gallery", ApiCategory.MISC.name(),visitorIdentifier.getIpAddress(),visitorIdentifier.getBrowserFingerprint());
+
+    /** Besitzt das Konto die Config? Nicht angemeldet (userId null) besitzt niemand etwas. */
+    public static boolean isOwner(GalleryConfig config, Long userId) {
+        return config != null && userId != null && userId.equals(config.getUserId());
     }
 
-    public Long copyConfig(GalleryConfigDto request, VisitorIdentifier visitorIdentifier) {
-        List<Long> idList = galleryConfigRepository.copyGalleryConfig(request.getId(), visitorIdentifier.getIpAddress(), visitorIdentifier.getBrowserFingerprint());
+    /** Veröffentlicht oder eigene: darf benutzt und kopiert werden. */
+    public static boolean isVisible(GalleryConfig config, Long userId) {
+        return config != null && (config.isPublished() || isOwner(config, userId));
+    }
+
+    public Long createConfig(long userId, String ip) {
+        return galleryConfigRepository.insertGalleryConfig("new gallery", ApiCategory.MISC.name(), ip, userId);
+    }
+
+    public Long copyConfig(GalleryConfigDto request, long userId, String ip) {
+        GalleryConfig source = galleryConfigRepository.findById(request.getId()).orElse(null);
+        if (!isVisible(source, userId)) {
+            return null;
+        }
+        List<Long> idList = galleryConfigRepository.copyGalleryConfig(source.getId(), ip, userId);
         return idList != null && idList.size() > 0 ? idList.get(0) : null; 
     }
 
-    public void deleteConfig(GalleryConfigDto request, VisitorIdentifier visitorIdentifier) {
+    public void deleteConfig(GalleryConfigDto request, long userId) {
         GalleryConfig old = galleryConfigRepository.findById(request.getId()).orElse(null);
-        if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
-            galleryConfigRepository.delete(old);
+        if (isOwner(old, userId)) {
+            deleteByIds(List.of(old.getId()));
         }
     }
 
-    public boolean checkVisitorIdentifier(GalleryConfig config, VisitorIdentifier visitorIdentifier) {
-        return visitorIdentifier != null && visitorIdentifier.equals(config.getVisitorIdentifier());
+    /** Beim Löschen eines Kontos: unveröffentlichte Configs weg, veröffentlichte bleiben ohne Besitzer. */
+    public int deleteUnpublishedOf(long userId) {
+        return deleteByIds(galleryConfigRepository.findUnpublishedIdsOf(userId));
     }
 
-    public Long editConfig(GalleryConfigDto request, VisitorIdentifier visitorIdentifier) {
-        GalleryConfig old = galleryConfigRepository.findById(request.getId()).orElse(null);
-        if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
-            GalleryConfig config = mapper.toEntity(request);
-            config.setVisitorIdentifier(visitorIdentifier);
-            return galleryConfigRepository.save(config).getId();
+    private int deleteByIds(List<Long> ids) {
+        if (ids.isEmpty()) {
+            return 0;
         }
-        return null;
+        galleryConfigRepository.deleteParametersOf(ids);
+        return galleryConfigRepository.deleteByIds(ids);
     }
-    
-    public Long publishConfig(GalleryConfigDto request, VisitorIdentifier visitorIdentifier) {
+
+    public Long editConfig(GalleryConfigDto request, long userId) {
         GalleryConfig old = galleryConfigRepository.findById(request.getId()).orElse(null);
-        if(old != null && old.getVisitorIdentifier() != null && old.getVisitorIdentifier().equals(visitorIdentifier)){
-            old.setPublished(request.isPublished());
-            galleryConfigRepository.save(old);
-            return old.getId();
-        } else {
+        if (!isOwner(old, userId)) {
             return null;
         }
+        GalleryConfig config = mapper.toEntity(request);
+        config.setVisitorIdentifier(old.getVisitorIdentifier());
+        config.setUserId(old.getUserId());
+        // Veröffentlichen geht nur über publish
+        config.setPublished(old.isPublished());
+        return galleryConfigRepository.save(config).getId();
+    }
+    
+    public Long publishConfig(GalleryConfigDto request, long userId) {
+        GalleryConfig old = galleryConfigRepository.findById(request.getId()).orElse(null);
+        if (!isOwner(old, userId)) {
+            return null;
+        }
+        old.setPublished(request.isPublished());
+        galleryConfigRepository.save(old);
+        return old.getId();
     }
 }

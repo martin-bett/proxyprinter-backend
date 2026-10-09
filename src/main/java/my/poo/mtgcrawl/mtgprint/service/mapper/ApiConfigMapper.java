@@ -29,6 +29,7 @@ public interface ApiConfigMapper {
     @Mapping(target = "parameterMap", expression = "java(mapMapToParameters(dto.getParameterMap()))")
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
     @Mapping(target = "lastUsed", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     @Mapping(target = "connectedCards", expression = "java(mapLocatorsToConnectedCards(dto.getConnectedCards()))")
     ApiConfig toEntity(ApiConfigDto dto);
 

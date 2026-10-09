@@ -21,6 +21,9 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import my.poo.mtgcrawl.mtgprint.service.auth.AppUser;
 import my.poo.mtgcrawl.mtgprint.service.auth.AuthService;
+import my.poo.mtgcrawl.mtgprint.service.rest.ApiConfigService;
+import my.poo.mtgcrawl.mtgprint.service.rest.DeckFinderConfigService;
+import my.poo.mtgcrawl.mtgprint.service.rest.GalleryConfigService;
 
 /** Login ohne Passwort (Link oder Code per Mail), Sitzung per HttpOnly-Cookie. */
 @RestController
@@ -30,10 +33,17 @@ public class AuthController {
     public static final String COOKIE = "pp_session";
 
     private final AuthService authService;
+    private final ApiConfigService apiConfigService;
+    private final GalleryConfigService galleryConfigService;
+    private final DeckFinderConfigService deckFinderConfigService;
     private final boolean secureCookie;
 
-    public AuthController(AuthService authService, @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl) {
+    public AuthController(AuthService authService, ApiConfigService apiConfigService, GalleryConfigService galleryConfigService,
+            DeckFinderConfigService deckFinderConfigService, @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl) {
         this.authService = authService;
+        this.apiConfigService = apiConfigService;
+        this.galleryConfigService = galleryConfigService;
+        this.deckFinderConfigService = deckFinderConfigService;
         this.secureCookie = publicUrl.startsWith("https://");
     }
 
@@ -128,6 +138,11 @@ public class AuthController {
         if (user.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        // Eigene unveröffentlichte Configs löschen; veröffentlichte bleiben ohne Besitzer, Ratings anonym (ON DELETE SET NULL)
+        long userId = user.get().id();
+        apiConfigService.deleteUnpublishedOf(userId);
+        galleryConfigService.deleteUnpublishedOf(userId);
+        deckFinderConfigService.deleteUnpublishedOf(userId);
         authService.deleteAccount(user.get());
         return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookie("", Duration.ZERO).toString()).build();
     }

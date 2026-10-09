@@ -12,25 +12,25 @@ import org.springframework.stereotype.Repository;
 
 import jakarta.annotation.Nonnull;
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfig;
-import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 
 @Repository
 public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
 
-    @Query(value=" SELECT api FROM ApiConfig api LEFT JOIN FETCH api.parameterMap pM WHERE api.published = true OR api.visitorIdentifier = :vi")
-    @Nonnull List<ApiConfig> findAllVisible(@Param("vi") VisitorIdentifier vi);
+    // userId null (nicht angemeldet): nur veröffentlichte
+    @Query(value=" SELECT api FROM ApiConfig api LEFT JOIN FETCH api.parameterMap pM WHERE api.published = true OR api.userId = :userId")
+    @Nonnull List<ApiConfig> findAllVisible(@Param("userId") Long userId);
 
 
     @Query(value = """
-        INSERT INTO proxymaster.api_config (name, category, ip_address, browser_fingerprint, last_used) 
-        VALUES (:name, CAST(:cate AS proxymaster.api_category), :ip, :footprint, now())
+        INSERT INTO proxymaster.api_config (name, category, ip_address, user_id, last_used)
+        VALUES (:name, CAST(:cate AS proxymaster.api_category), :ip, :userId, now())
         RETURNING id
     """, nativeQuery = true)
     Long insertApiConfig(
         @Param("name") String name,
         @Param("cate") String cate,
         @Param("ip") String ip,
-        @Param("footprint") String footprint
+        @Param("userId") Long userId
     );
 
 
@@ -43,7 +43,7 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
                     data_list_field, name_field, name_split_character, image_url_field, language_field, set_field,
                     set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field,
                     follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field,
-                    nested_language_language_field, ip_address, browser_fingerprint, published, proxy_images, last_used,
+                    nested_language_language_field, ip_address, user_id, published, proxy_images, last_used,
                     card_faces_data_list_field, card_faces_image_url_field, card_faces_name_field, default_language
                 )
                 SELECT category, official_website, name || '_copy', custom_arts, method, request_format, base_url,
@@ -51,7 +51,7 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
                        use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field,
                        language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field,
                        follow_link_image_field, follow_link_language_field, nested_language_data_list_field,
-                       nested_language_image_url_field, nested_language_language_field, :ipAddress, :browserFingerprint, FALSE, proxy_images, now(),
+                       nested_language_image_url_field, nested_language_language_field, :ipAddress, :userId, FALSE, proxy_images, now(),
                        card_faces_data_list_field, card_faces_image_url_field, card_faces_name_field, default_language
                 FROM proxymaster.api_config
                 WHERE id = :id
@@ -71,7 +71,7 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
     List<Long> copyApiConfig(
         @Param("id") Long id,
         @Param("ipAddress") String ipAddress,
-        @Param("browserFingerprint") String browserFingerprint
+        @Param("userId") Long userId
     );
 
     @Modifying
@@ -87,13 +87,17 @@ public interface ApiConfigRepository extends JpaRepository<ApiConfig, Long> {
     @Query(value = "UPDATE proxymaster.api_config SET last_used = now() WHERE id IN (:ids)", nativeQuery = true)
     int markUsed(@Param("ids") Collection<Long> ids);
 
-    // Nur Configs mit Ersteller: mitgelieferte Standard-Configs haben keine ip_address und bleiben immer.
+    // Nur Configs mit Ersteller: mitgelieferte Standard-Configs haben keine ip_address und bleiben immer,
+    // Configs eines Kontos bleiben, solange das Konto existiert.
     // last_used NULL (Spalte noch nicht befüllt) zählt nicht als abgelaufen.
     @Query(value = """
         SELECT id FROM proxymaster.api_config
-        WHERE ip_address IS NOT NULL AND last_used IS NOT NULL AND last_used < :cutoff
+        WHERE ip_address IS NOT NULL AND user_id IS NULL AND last_used IS NOT NULL AND last_used < :cutoff
         """, nativeQuery = true)
     List<Long> findUnusedSince(@Param("cutoff") LocalDateTime cutoff);
+
+    @Query(value = "SELECT id FROM proxymaster.api_config WHERE user_id = :userId AND published = false", nativeQuery = true)
+    List<Long> findUnpublishedIdsOf(@Param("userId") Long userId);
 
     @Modifying
     @Query(value = "DELETE FROM proxymaster.api_config_connected_card WHERE config_id IN (:ids)", nativeQuery = true)

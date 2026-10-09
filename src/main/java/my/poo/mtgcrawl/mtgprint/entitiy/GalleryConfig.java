@@ -39,6 +39,10 @@ public class GalleryConfig {
     @Embedded
     private VisitorIdentifier visitorIdentifier;
 
+    // Besitzer (Konto); null bei mitgelieferten Configs und alten Configs aus der Fingerprint-Zeit
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column
     private boolean published;
 

@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.tika.Tika;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import my.poo.mtgcrawl.mtgprint.service.net.BlockedUrlException;
@@ -36,6 +37,7 @@ public class ImageFetchService {
     private final Tika tika = new Tika();
     private final Map<String, Failure> failures = new ConcurrentHashMap<>();
 
+    @Autowired
     public ImageFetchService(OutboundUrlGuard guard) {
         this(HttpClient.newBuilder()
                 .followRedirects(HttpClient.Redirect.NEVER)

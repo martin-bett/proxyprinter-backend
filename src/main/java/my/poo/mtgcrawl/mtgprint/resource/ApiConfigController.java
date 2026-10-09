@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfig;
-import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ApiConfigDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.RatingRequest;
 import my.poo.mtgcrawl.mtgprint.repository.ApiConfigRepository;
@@ -23,6 +22,7 @@ import my.poo.mtgcrawl.mtgprint.service.rest.ApiConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.RatingService;
 
 
+/** API-Configs: benutzen geht ohne Konto (veröffentlichte), anlegen, kopieren, bearbeiten und bewerten nur mit Konto. */
 @RestController
 @RequestMapping("/api/configs")
 @AllArgsConstructor
@@ -31,41 +31,37 @@ public class ApiConfigController{
     private final ApiConfigRepository apiConfigRepository;
     private final ApiConfigService apiConfigService;
     private final RatingService ratingService;
+    private final CurrentUser currentUser;
 
     private final ApiConfigMapper mapper;
     
     @GetMapping
     public List<ApiConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorId = extractVisitorIdentifier(httpRequest);
-        return apiConfigRepository.findAllVisible(visitorId)
+        return apiConfigRepository.findAllVisible(currentUser.idOrNull(httpRequest))
             .stream()
             .map(this::toDTO)
             .collect(Collectors.toList());
     }
     
     @GetMapping("/create")
-    public ResponseEntity<Long> createConfig(
-            HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = apiConfigService.createApiConfig(visitorIdentifier);
-        return ResponseEntity.ok(result);
+    public ResponseEntity<Long> createConfig(HttpServletRequest httpRequest) {
+        long userId = currentUser.require(httpRequest);
+        return ResponseEntity.ok(apiConfigService.createApiConfig(userId, httpRequest.getRemoteAddr()));
     }   
 
     @PostMapping("/copy")
     public ResponseEntity<Long> copyConfig(
             @RequestBody ApiConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = apiConfigService.copyConfig(request, visitorIdentifier);
-        return ResponseEntity.ok(result);
+        long userId = currentUser.require(httpRequest);
+        return ResponseEntity.ok(apiConfigService.copyConfig(request, userId, httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/delete")
     public ResponseEntity<?> deleteConfig(
             @RequestBody ApiConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        apiConfigService.deleteConfig(request, visitorIdentifier);
+        apiConfigService.deleteConfig(request, currentUser.require(httpRequest));
         return ResponseEntity.ok().build();
     }
 
@@ -79,27 +75,22 @@ public class ApiConfigController{
     public ResponseEntity<Long> publishConfig(
             @RequestBody ApiConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = apiConfigService.publishConfig(request, visitorIdentifier);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(apiConfigService.publishConfig(request, currentUser.require(httpRequest)));
     }
 
     @PostMapping("/edit")
     public ResponseEntity<Long> editConfig(
             @RequestBody ApiConfigDto request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        Long result = apiConfigService.editApiConfig(request, visitorIdentifier);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(apiConfigService.editApiConfig(request, currentUser.require(httpRequest)));
     }
 
+    /** Darf der Besucher die Config bearbeiten? Ohne Konto immer false. */
     @GetMapping("/{configId}/check")
-    public ResponseEntity<Boolean> createConfig(
+    public ResponseEntity<Boolean> checkOwner(
             @PathVariable ApiConfig configId,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorIdentifier = extractVisitorIdentifier(httpRequest);
-        boolean res = apiConfigService.checkVisitorIdentifier(configId, visitorIdentifier);
-        return ResponseEntity.ok(res);
+        return ResponseEntity.ok(ApiConfigService.isOwner(configId, currentUser.idOrNull(httpRequest)));
     }
     
     @PostMapping("/{configId}/rate")
@@ -107,21 +98,13 @@ public class ApiConfigController{
             @PathVariable ApiConfig configId,
             @RequestBody RatingRequest request,
             HttpServletRequest httpRequest) {
-        VisitorIdentifier visitorId = extractVisitorIdentifier(httpRequest);
-        ratingService.saveOrUpdateRating(visitorId, configId, request.getScore(), request.getComment(), request.getAction());
+        long userId = currentUser.require(httpRequest);
+        if (!ApiConfigService.isVisible(configId, userId)) {
+            return ResponseEntity.notFound().build();
+        }
+        ratingService.saveOrUpdateRating(userId, configId, request.getScore(), request.getComment(), request.getAction());
         return ResponseEntity.ok().build();
     }
-
-    private VisitorIdentifier extractVisitorIdentifier(HttpServletRequest request) {
-        String ip = request.getRemoteAddr();
-        String fingerprint = request.getHeader("X-Fingerprint");
-        return new VisitorIdentifier(ip, fingerprint);
-    }
-
-    // private boolean isValidVisitorIdentifier(VisitorIdentifier identifier) {
-    //     return identifier.getIpAddress() != null && !identifier.getIpAddress().isEmpty() &&
-    //            identifier.getBrowserFingerprint() != null && !identifier.getBrowserFingerprint().isEmpty();
-    // }
 
     private ApiConfigDto toDTO(ApiConfig apiconfig1) {
         ApiConfigDto d = mapper.toDTO(apiconfig1);
