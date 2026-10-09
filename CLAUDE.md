@@ -42,6 +42,10 @@ builds the proxy PDF (PDFBox) and sends it by mail. Frontend lives in `martin-be
 
 ## Working conventions
 - Answer martin in German.
+- No user-visible text hardcoded in German or English only: API errors carry a `code` + `params` (plus an English `error` fallback; the frontend translates), mail texts live in `src/main/resources/i18n/mail_<lang>.properties` (`MailTexts`, all languages need all keys).
 - Commit and push early and often; open a draft PR early (unpushed work has been lost before).
 - Prefer generic solutions driven by API/gallery configs over source-specific special cases in code.
 - `archive/` holds old recovered code; don't edit it.
+- Skip labels: PR labels `skip-preview` (no test deployment) and `skip-tests` (skip the `test` job) are evaluated by `ci.yml`
+  for PRs to `develop` only. If a change is tiny or has no functional effect, propose them in the PR description with a one-line
+  reason; apply a label only after martin agrees (see `deploy/PREVIEW.md` in the backend repo).

@@ -40,25 +40,31 @@ public class GalleryFetchService {
 
     public GalleryResponse fetch(GalleryConfig config, String input) {
         if (isBlank(config.getBaseUrl()) || !config.getBaseUrl().matches("(?i)https?://.*")) {
-            throw new GallerySourceException(HttpStatus.BAD_REQUEST, "Die Config braucht eine absolute Base URL (http/https).");
+            throw new GallerySourceException(HttpStatus.BAD_REQUEST, "gallery.baseUrlInvalid",
+                    "The config needs an absolute base URL (http/https).", Map.of());
         }
         if (!isBlank(config.getCredential()) && !credentials.exists(config.getCredential())) {
-            throw new GallerySourceException(HttpStatus.BAD_GATEWAY,
-                    "Zugang \"" + config.getCredential() + "\" ist auf dem Server nicht eingerichtet.");
+            throw new GallerySourceException(HttpStatus.BAD_GATEWAY, "gallery.credentialMissing",
+                    "Credential \"" + config.getCredential() + "\" is not set up on the server.",
+                    Map.of("credential", config.getCredential()));
         }
         String url = fillTemplate(config.getBaseUrl(), variables(config, input));
         HttpResponse<String> response = get(url, config.getCredential(), true);
         int status = response.statusCode();
         String host = response.uri().getHost();
         if (status == 404 || status == 410) {
-            throw new GallerySourceException(HttpStatus.NOT_FOUND, "Nichts gefunden (privat oder gelöscht?).");
+            throw new GallerySourceException(HttpStatus.NOT_FOUND, "gallery.notFound", "Nothing found (private or deleted?).", Map.of());
         }
         if (status == 401 || status == 403 || status == 429 || status == 503) {
-            throw new GallerySourceException(HttpStatus.BAD_GATEWAY, host + " blockt den Abruf (HTTP " + status + ")."
-                    + (isBlank(config.getCredential()) ? "" : " Zugang \"" + config.getCredential() + "\" evtl. abgelaufen."));
+            throw new GallerySourceException(HttpStatus.BAD_GATEWAY,
+                    isBlank(config.getCredential()) ? "gallery.blocked" : "gallery.blockedCredential",
+                    host + " blocks the request (HTTP " + status + ")."
+                            + (isBlank(config.getCredential()) ? "" : " Credential \"" + config.getCredential() + "\" may have expired."),
+                    Map.of("host", host, "status", String.valueOf(status), "credential", String.valueOf(config.getCredential())));
         }
         if (status >= 300) {
-            throw new GallerySourceException(HttpStatus.BAD_GATEWAY, host + " antwortet mit HTTP " + status + ".");
+            throw new GallerySourceException(HttpStatus.BAD_GATEWAY, "gallery.httpError",
+                    host + " responded with HTTP " + status + ".", Map.of("host", host, "status", String.valueOf(status)));
         }
         String contentType = "html".equalsIgnoreCase(config.getDataFormat()) ? "text/html" : "application/json";
         return new GalleryResponse(contentType, response.body());
@@ -75,7 +81,7 @@ public class GalleryFetchService {
             return values;
         }
         if (value.isEmpty()) {
-            throw new GallerySourceException(HttpStatus.BAD_REQUEST, "Bitte einen Link eingeben.");
+            throw new GallerySourceException(HttpStatus.BAD_REQUEST, "gallery.linkRequired", "Please enter a link.", Map.of());
         }
         Pattern pattern = compile(config.getLinkPattern());
         Optional<Matcher> match = match(pattern, value);
@@ -108,7 +114,8 @@ public class GalleryFetchService {
         try {
             return Pattern.compile(regex);
         } catch (PatternSyntaxException e) {
-            throw new GallerySourceException(HttpStatus.BAD_REQUEST, "Link Pattern ist keine gültige Regex: " + e.getDescription());
+            throw new GallerySourceException(HttpStatus.BAD_REQUEST, "gallery.invalidLinkPattern",
+                    "Link Pattern is not a valid regex: " + e.getDescription(), Map.of("description", e.getDescription()));
         }
     }
 
@@ -133,7 +140,7 @@ public class GalleryFetchService {
             }
             current = URI.create(current).resolve(location.get()).toString();
         }
-        throw new GallerySourceException(HttpStatus.BAD_GATEWAY, "Zu viele Weiterleitungen.");
+        throw new GallerySourceException(HttpStatus.BAD_GATEWAY, "gallery.tooManyRedirects", "Too many redirects.", Map.of());
     }
 
     private HttpResponse<String> getOnce(String url, String credential) {
@@ -151,7 +158,7 @@ public class GalleryFetchService {
         try {
             return DeckFinderFetchService.checkedUri(url);
         } catch (DeckFinderException e) {
-            throw new GallerySourceException(e.getStatus(), e.getMessage());
+            throw new GallerySourceException(e.getStatus(), e.getCode(), e.getMessage(), e.getParams());
         }
     }
 

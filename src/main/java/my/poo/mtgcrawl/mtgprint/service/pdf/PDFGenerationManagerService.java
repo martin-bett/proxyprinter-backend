@@ -58,11 +58,12 @@ public class PDFGenerationManagerService {
     public synchronized String submitJob(CreatePdfDto request) {
         String progressId = computeRequestHash(request);
         String email = request.getEmail();
+        String language = request.getLanguage();
 
         PdfJob existing = allJobs.get(progressId);
         if (existing != null && existing.status != JobStatus.FINISHED) {
             if (email != null) {
-                existing.emailRecipients.add(email);
+                existing.emailRecipients.put(email, MailTexts.normalize(language));
             }
             return progressId;
         }
@@ -78,13 +79,13 @@ public class PDFGenerationManagerService {
             job.sendProgress(dto);
             job.setStatus(JobStatus.FINISHED);
             if (email != null) {
-                mailNotifier.sendReady(email, progressId, cachedPdf.length);
+                mailNotifier.sendReady(email, MailTexts.normalize(language), progressId, cachedPdf.length);
             }
             return progressId;
         }
 
         if (email != null) {
-            job.emailRecipients.add(email);
+            job.emailRecipients.put(email, MailTexts.normalize(language));
         }
         queue.addLast(job);
         sendQueuePositions();
@@ -107,7 +108,7 @@ public class PDFGenerationManagerService {
             try {
                 pdfGenerationService.generateDocument(job);
                 long fileSize = job.progressHistory.isEmpty() ? 0 : last(job.progressHistory).getFileSize();
-                job.emailRecipients.forEach(to -> mailNotifier.sendReady(to, job.progressId, fileSize));
+                job.emailRecipients.forEach((to, lang) -> mailNotifier.sendReady(to, lang, job.progressId, fileSize));
             } catch (Throwable e) {
                 if (e instanceof PdfSizeLimit.PdfTooLargeException) {
                     log.info("PDF " + job.progressId + " rejected: " + e.getMessage());
@@ -117,7 +118,7 @@ public class PDFGenerationManagerService {
                 ProgressDto errorDto = ProgressDto.of(job.progressId, Category.finishing, "Error: " + e.getMessage(), 0, 0);
                 errorDto.setError(true);
                 job.sendProgress(errorDto);
-                job.emailRecipients.forEach(to -> mailNotifier.sendFailed(to, e.getMessage()));
+                job.emailRecipients.forEach((to, lang) -> mailNotifier.sendFailed(to, lang, e.getMessage()));
             } finally {
                 job.setStatus(JobStatus.FINISHED);
                 synchronized (this) {

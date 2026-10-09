@@ -87,14 +87,14 @@ public class DeckFinderConfigController {
     }
 
     @ExceptionHandler(DeckFinderException.class)
-    public ResponseEntity<Map<String, String>> handle(DeckFinderException e) {
-        return ResponseEntity.status(e.getStatus()).body(Map.of("error", e.getMessage()));
+    public ResponseEntity<Map<String, Object>> handle(DeckFinderException e) {
+        return ResponseEntity.status(e.getStatus()).body(e.toBody());
     }
 
     private DeckFinderConfig visibleConfig(Long configId, HttpServletRequest httpRequest) {
         DeckFinderConfig config = service.findVisible(configId, extractVisitorIdentifier(httpRequest));
         if (config == null) {
-            throw new DeckFinderException(HttpStatus.NOT_FOUND, "Deckfinder-Config nicht gefunden.");
+            throw new DeckFinderException(HttpStatus.NOT_FOUND, "deckfinder.configNotFound", "Deckfinder config not found.", Map.of());
         }
         return config;
     }

@@ -170,6 +170,32 @@ CREATE TABLE proxymaster.app_log (
 );
 CREATE INDEX app_log_logged_at_idx ON proxymaster.app_log (logged_at);
 
+-- Konten (Login per E-Mail-Link/Code)
+CREATE TABLE proxymaster.app_user (
+    id bigserial PRIMARY KEY,
+    email varchar(254) NOT NULL UNIQUE,
+    created_at timestamp NOT NULL DEFAULT now(),
+    last_login timestamp
+);
+
+CREATE TABLE proxymaster.login_token (
+    token_hash varchar(64) PRIMARY KEY,
+    email varchar(254) NOT NULL,
+    code_hash varchar(64) NOT NULL,
+    attempts int NOT NULL DEFAULT 0,
+    expires_at timestamp NOT NULL
+);
+CREATE INDEX login_token_email_idx ON proxymaster.login_token (email);
+
+CREATE TABLE proxymaster.user_session (
+    token_hash varchar(64) PRIMARY KEY,
+    user_id bigint NOT NULL REFERENCES proxymaster.app_user (id) ON DELETE CASCADE,
+    created_at timestamp NOT NULL DEFAULT now(),
+    last_seen timestamp NOT NULL DEFAULT now(),
+    user_agent varchar(255)
+);
+CREATE INDEX user_session_user_idx ON proxymaster.user_session (user_id);
+
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(1, 'MTG'::proxymaster."api_category", 'https://aetherhub.com/', 'aetherhub', false, 'GET', NULL, 'https://aetherhub.com/Card/Search', 2, 'html', NULL, NULL, NULL, true, 'div#cards>div', 'div.item-hidden-text | innerText', NULL, 'img | attr:data-src', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);
@@ -348,7 +374,7 @@ VALUES(58, 20, 'q', '{cardname}', 'request');
 -- Parameter "url" ohne Wert wird im Frontend zum Eingabefeld ($GALLERY_INPUT$).
 INSERT INTO proxymaster.gallery_config
 (id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy, link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement)
-VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', 'https://www.reddit.com/comments/{id}.json?raw_json=1&limit=1', 'json', 's.u', 'id', '0.data.children.0.data.media_metadata', NULL, 'https://www.reddit.com/r/magicproxies/', NULL, NULL, true, 'GET', NULL, false, '(?:/comments/|/gallery/|redd\.it/)(?<id>[a-z0-9]{4,12})(?:[/?#]|$)', true, 'reddit', '^https://(?:preview|external-preview)\.redd\.it/([^?]+).*$', 'https://i.redd.it/$1', NULL, NULL);
+VALUES(1, 'MISC'::proxymaster."api_category", 'reddit', 'https://www.reddit.com/comments/{id}/', 'html', 'zoomable-img img | attr:src', 'zoomable-img img | attr:src', 'gallery-carousel li', NULL, 'https://www.reddit.com/r/magicproxies/', NULL, NULL, true, 'GET', NULL, false, '(?:/comments/|/gallery/|redd\.it/)(?<id>[a-z0-9]{4,12})(?:[/?#]|$)', true, 'reddit', NULL, NULL, '^.*/([^/.]+)\.[a-z0-9]+$', '$1');
 INSERT INTO proxymaster.gallery_config
 (id, category, "name", base_url, data_format, image_url_field, name_field, data_list_field, pagination_field, official_website, ip_address, browser_fingerprint, published, "method", request_format, use_backend_proxy, link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement)
 VALUES(2, 'MISC'::proxymaster."api_category", 'google_drive', 'https://drive.google.com/embeddedfolderview?id={id}', 'html', 'a[href] | attr:href', '.flip-entry-title | innerText', 'div.flip-entry:not(:has(a[href*="/folders/"]))', NULL, 'https://drive.google.com/', NULL, NULL, true, 'GET', NULL, false, '(?:/folders/|[?&]id=)(?<id>[A-Za-z0-9_-]{10,})', false, NULL, '^.*/file/d/([A-Za-z0-9_-]+).*$', 'https://drive.google.com/uc?export=download&id=$1', '\.[A-Za-z0-9]{2,5}$', '');
