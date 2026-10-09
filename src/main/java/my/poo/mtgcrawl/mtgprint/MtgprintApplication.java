@@ -8,7 +8,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
 import org.springframework.http.converter.FormHttpMessageConverter;
 import org.springframework.http.converter.StringHttpMessageConverter;
@@ -17,6 +16,9 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
+
+import my.poo.mtgcrawl.mtgprint.service.net.GuardedRequestFactory;
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
 
 @SpringBootApplication
 @EnableScheduling
@@ -28,7 +30,7 @@ public class MtgprintApplication {
     }
 
     @Bean
-    public RestTemplate restTemplate() {
+    public RestTemplate restTemplate(OutboundUrlGuard guard) {
         RestTemplate template = new RestTemplate();
         
         // Add UTF-8 encoding support
@@ -52,9 +54,10 @@ public class MtgprintApplication {
         uriBuilderFactory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.NONE);
         template.setUriTemplateHandler(uriBuilderFactory);
 
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setBufferRequestBody(false); // Optional: Streaming support
+        // Abrufe im Auftrag von Besuchern: nur http(s) ins öffentliche Netz, Weiterleitungen werden einzeln geprüft
+        GuardedRequestFactory requestFactory = new GuardedRequestFactory(guard);
         template.setRequestFactory(requestFactory);
+        template.getInterceptors().add(requestFactory.redirectInterceptor());
  
         return template;
     }

@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import lombok.extern.slf4j.Slf4j;
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
 import my.poo.mtgcrawl.mtgprint.entitiy.DeckFinderConfig;
 
 /**
@@ -165,8 +166,7 @@ public class DeckFinderFetchService {
         }
         try {
             for (InetAddress address : InetAddress.getAllByName(uri.getHost())) {
-                if (address.isLoopbackAddress() || address.isSiteLocalAddress() || address.isLinkLocalAddress()
-                        || address.isAnyLocalAddress()) {
+                if (OutboundUrlGuard.isInternal(address)) {
                     throw new DeckFinderException(HttpStatus.BAD_REQUEST, "deckfinder.internalAddress", "Internal addresses are not allowed.", Map.of());
                 }
             }

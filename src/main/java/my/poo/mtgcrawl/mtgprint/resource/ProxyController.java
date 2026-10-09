@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import my.poo.mtgcrawl.mtgprint.service.HashService;
 import my.poo.mtgcrawl.mtgprint.service.rest.ApiProbeService;
+import my.poo.mtgcrawl.mtgprint.service.net.BlockedUrlException;
 import my.poo.mtgcrawl.mtgprint.service.rest.FileDownloadService;
 import my.poo.mtgcrawl.mtgprint.service.rest.ImageFetchService;
 
@@ -97,8 +98,7 @@ public class ProxyController {
                         requestEntity1,
                         String.class);
 
-                HttpHeaders responseHeaders = new HttpHeaders();
-                responseHeaders.putAll(response.getHeaders());
+                HttpHeaders responseHeaders = forwardableHeaders(response.getHeaders());
 
                 return ResponseEntity.status(response.getStatusCode())
                         .headers(responseHeaders)
@@ -126,12 +126,13 @@ public class ProxyController {
                     requestEntity,
                     String.class);
 
-            HttpHeaders responseHeaders = new HttpHeaders();
-            responseHeaders.putAll(response.getHeaders());
+            HttpHeaders responseHeaders = forwardableHeaders(response.getHeaders());
 
             return ResponseEntity.status(response.getStatusCode())
                     .headers(responseHeaders)
                     .body(response.getBody());
+        } catch (BlockedUrlException e) {
+            throw e;
         } catch (Exception e) {
             log.error("blabla", e);
             return null;
@@ -206,9 +207,19 @@ public class ProxyController {
         throw new RuntimeException("CSRF token not found");
     }
 
+    // Keine Cookies: die des Besuchers gehören zu proxyprinter.eu (Sitzung), nicht zur fremden Quelle
     private void copyRelevantHeaders(HttpServletRequest request, HttpHeaders headers) {
-        Arrays.asList("User-Agent", "Accept", "Accept-Language", "Referer", "Cookie")
+        Arrays.asList("User-Agent", "Accept", "Accept-Language", "Referer")
                 .forEach(headerName -> copyHeader(request, headers, headerName));
+    }
+
+    /** Antwort-Header der Quelle ohne Cookies, damit sie keine Cookies für proxyprinter.eu setzen kann. */
+    static HttpHeaders forwardableHeaders(HttpHeaders source) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.putAll(source);
+        headers.remove(HttpHeaders.SET_COOKIE);
+        headers.remove(HttpHeaders.SET_COOKIE2);
+        return headers;
     }
 
     private void copyHeader(HttpServletRequest request, HttpHeaders headers, String headerName) {

@@ -13,11 +13,15 @@ import java.util.concurrent.TimeUnit;
 import org.apache.tika.Tika;
 import org.springframework.stereotype.Service;
 
+import my.poo.mtgcrawl.mtgprint.service.net.BlockedUrlException;
+import my.poo.mtgcrawl.mtgprint.service.net.GuardedHttp;
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
+
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Lädt Bilder für /api/proxy/image. Folgt Umleitungen (auch http→https und 308, was der
- * RestTemplate nicht tut), prüft, dass wirklich ein Bild zurückkommt, und merkt sich
+ * Lädt Bilder für /api/proxy/image. Folgt Umleitungen (auch http→https und 308), jedes Ziel geprüft
+ * vom OutboundUrlGuard, prüft, dass wirklich ein Bild zurückkommt, und merkt sich
  * fehlgeschlagene URLs eine Weile, damit eine Quelle nicht wiederholt angefragt wird.
  */
 @Service
@@ -28,19 +32,21 @@ public class ImageFetchService {
     private static final int MAX_FAILURES = 10_000;
 
     private final HttpClient client;
+    private final OutboundUrlGuard guard;
     private final Tika tika = new Tika();
     private final Map<String, Failure> failures = new ConcurrentHashMap<>();
 
-    public ImageFetchService() {
+    public ImageFetchService(OutboundUrlGuard guard) {
         this(HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .connectTimeout(Duration.ofSeconds(10))
                 .proxy(ProxySelector.getDefault())
-                .build());
+                .build(), guard);
     }
 
-    ImageFetchService(HttpClient client) {
+    ImageFetchService(HttpClient client, OutboundUrlGuard guard) {
         this.client = client;
+        this.guard = guard;
     }
 
     public record Image(byte[] content, String contentType) {
@@ -74,7 +80,7 @@ public class ImageFetchService {
                     .header("User-Agent", "Mozilla/5.0 (compatible; proxyprinter.eu image proxy)")
                     .GET()
                     .build();
-            HttpResponse<byte[]> response = client.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            HttpResponse<byte[]> response = GuardedHttp.send(client, guard, request, HttpResponse.BodyHandlers.ofByteArray());
             int status = response.statusCode();
             if (status < 200 || status >= 300) {
                 String location = response.headers().firstValue("Location").map(l -> " -> " + l).orElse("");
@@ -92,6 +98,8 @@ public class ImageFetchService {
             return new Image(body, contentType);
         } catch (ImageFetchException e) {
             throw e;
+        } catch (BlockedUrlException e) {
+            throw fail(url, e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw fail(url, "abgebrochen");

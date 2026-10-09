@@ -14,6 +14,10 @@ import java.util.Locale;
 
 import org.springframework.stereotype.Service;
 
+import my.poo.mtgcrawl.mtgprint.service.net.BlockedUrlException;
+import my.poo.mtgcrawl.mtgprint.service.net.GuardedHttp;
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
+
 /**
  * Testabfrage für den API-Wizard: schickt eine Anfrage an eine fremde API und gibt
  * Status, Content-Type und Rohantwort zurück, auch bei HTTP-Fehlern, damit der Wizard
@@ -25,17 +29,19 @@ public class ApiProbeService {
     static final int MAX_BODY_BYTES = 3 * 1024 * 1024;
 
     private final HttpClient client;
+    private final OutboundUrlGuard guard;
 
-    public ApiProbeService() {
+    public ApiProbeService(OutboundUrlGuard guard) {
         this(HttpClient.newBuilder()
-                .followRedirects(HttpClient.Redirect.NORMAL)
+                .followRedirects(HttpClient.Redirect.NEVER)
                 .connectTimeout(Duration.ofSeconds(10))
                 .proxy(ProxySelector.getDefault())
-                .build());
+                .build(), guard);
     }
 
-    ApiProbeService(HttpClient client) {
+    ApiProbeService(HttpClient client, OutboundUrlGuard guard) {
         this.client = client;
+        this.guard = guard;
     }
 
     public record ProbeRequest(String url, String method, String body, String requestFormat) {
@@ -62,7 +68,7 @@ public class ApiProbeService {
             } else {
                 builder.GET();
             }
-            HttpResponse<InputStream> response = client.send(builder.build(),
+            HttpResponse<InputStream> response = GuardedHttp.send(client, guard, builder.build(),
                     HttpResponse.BodyHandlers.ofInputStream());
             String type = response.headers().firstValue("Content-Type").orElse("");
             byte[] bytes;
@@ -79,6 +85,8 @@ public class ApiProbeService {
             }
             return new ProbeResult(response.statusCode(), type, response.uri().toString(),
                     new String(bytes, charset(type)), truncated, null);
+        } catch (BlockedUrlException e) {
+            return error(e.getMessage());
         } catch (IllegalArgumentException e) {
             return error("Ungültige URL: " + e.getMessage());
         } catch (InterruptedException e) {
