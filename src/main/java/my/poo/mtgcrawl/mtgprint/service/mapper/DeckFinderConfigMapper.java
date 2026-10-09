@@ -12,6 +12,7 @@ public interface DeckFinderConfigMapper {
 
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
     @Mapping(target = "visitorIdentifier", ignore = true)
+    @Mapping(target = "userId", ignore = true)
     DeckFinderConfig toEntity(DeckFinderConfigDto dto);
 
     @Mapping(target = "category", expression = "java(mapEnumToString(config.getCategory()))")

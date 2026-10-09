@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.RestController;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.DeckFinderConfig;
-import my.poo.mtgcrawl.mtgprint.entitiy.VisitorIdentifier;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.DeckFinderConfigDto;
 import my.poo.mtgcrawl.mtgprint.service.deckfinder.DeckFinderException;
 import my.poo.mtgcrawl.mtgprint.service.deckfinder.DeckFinderFetchService;
@@ -32,42 +31,46 @@ public class DeckFinderConfigController {
 
     private final DeckFinderConfigService service;
     private final DeckFinderFetchService fetchService;
+    private final CurrentUser currentUser;
 
     @GetMapping
     public List<DeckFinderConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
-        return service.findAllVisible(extractVisitorIdentifier(httpRequest));
+        return service.findAllVisible(currentUser.idOrNull(httpRequest));
     }
 
     @GetMapping("/create")
     public ResponseEntity<Long> createConfig(HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(service.createConfig(extractVisitorIdentifier(httpRequest)));
+        long userId = currentUser.require(httpRequest);
+        return ResponseEntity.ok(service.createConfig(userId, httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/copy")
     public ResponseEntity<Long> copyConfig(@RequestBody DeckFinderConfigDto request, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(service.copyConfig(request, extractVisitorIdentifier(httpRequest)));
+        long userId = currentUser.require(httpRequest);
+        return ResponseEntity.ok(service.copyConfig(request, userId, httpRequest.getRemoteAddr()));
     }
 
     @PostMapping("/delete")
     public ResponseEntity<?> deleteConfig(@RequestBody DeckFinderConfigDto request, HttpServletRequest httpRequest) {
-        service.deleteConfig(request, extractVisitorIdentifier(httpRequest));
+        service.deleteConfig(request, currentUser.require(httpRequest));
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/publish")
     public ResponseEntity<Long> publishConfig(@RequestBody DeckFinderConfigDto request, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(service.publishConfig(request, extractVisitorIdentifier(httpRequest)));
+        return ResponseEntity.ok(service.publishConfig(request, currentUser.require(httpRequest)));
     }
 
     @PostMapping("/edit")
     public ResponseEntity<Long> editConfig(@RequestBody DeckFinderConfigDto request, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(service.editConfig(request, extractVisitorIdentifier(httpRequest)));
+        return ResponseEntity.ok(service.editConfig(request, currentUser.require(httpRequest)));
     }
 
     @GetMapping("/{configId}/check")
     public ResponseEntity<Boolean> checkOwner(@PathVariable Long configId, HttpServletRequest httpRequest) {
-        DeckFinderConfig config = service.findVisible(configId, extractVisitorIdentifier(httpRequest));
-        return ResponseEntity.ok(config != null && service.isOwner(config, extractVisitorIdentifier(httpRequest)));
+        Long userId = currentUser.idOrNull(httpRequest);
+        DeckFinderConfig config = service.findVisible(configId, userId);
+        return ResponseEntity.ok(config != null && service.isOwner(config, userId));
     }
 
     /** Deck per Link oder ID laden; Antwort der Seite unverändert (JSON oder Text). */
@@ -92,7 +95,7 @@ public class DeckFinderConfigController {
     }
 
     private DeckFinderConfig visibleConfig(Long configId, HttpServletRequest httpRequest) {
-        DeckFinderConfig config = service.findVisible(configId, extractVisitorIdentifier(httpRequest));
+        DeckFinderConfig config = service.findVisible(configId, currentUser.idOrNull(httpRequest));
         if (config == null) {
             throw new DeckFinderException(HttpStatus.NOT_FOUND, "deckfinder.configNotFound", "Deckfinder config not found.", Map.of());
         }
@@ -103,9 +106,5 @@ public class DeckFinderConfigController {
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_TYPE, response.contentType() + ";charset=UTF-8")
                 .body(response.body());
-    }
-
-    private VisitorIdentifier extractVisitorIdentifier(HttpServletRequest request) {
-        return new VisitorIdentifier(request.getRemoteAddr(), request.getHeader("X-Fingerprint"));
     }
 }

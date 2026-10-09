@@ -13,20 +13,26 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import my.poo.mtgcrawl.mtgprint.service.net.GuardedHttp;
+import my.poo.mtgcrawl.mtgprint.service.net.OutboundUrlGuard;
+
 /** HTTP-Abruf für den Deckfinder, eigene Klasse, damit Tests ihn ersetzen können. */
 @Component
 public class DeckFinderHttp {
 
     private final HttpClient client = HttpClient.newBuilder()
-            .followRedirects(HttpClient.Redirect.NORMAL)
+            .followRedirects(HttpClient.Redirect.NEVER)
             .proxy(ProxySelector.getDefault())
             .connectTimeout(Duration.ofSeconds(15))
             .build();
 
     private final String userAgent;
+    private final OutboundUrlGuard guard;
 
-    public DeckFinderHttp(@Value("${deckfinder.user-agent:proxyprinter.eu deckfinder (+https://proxyprinter.eu)}") String userAgent) {
+    public DeckFinderHttp(@Value("${deckfinder.user-agent:proxyprinter.eu deckfinder (+https://proxyprinter.eu)}") String userAgent,
+            OutboundUrlGuard guard) {
         this.userAgent = userAgent;
+        this.guard = guard;
     }
 
     public HttpResponse<String> get(URI uri) {
@@ -37,7 +43,8 @@ public class DeckFinderHttp {
                 .GET()
                 .build();
         try {
-            return client.send(request, HttpResponse.BodyHandlers.ofString());
+            // Weiterleitungen nur auf geprüfte Ziele
+            return GuardedHttp.send(client, guard, request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException e) {
             throw new DeckFinderException(HttpStatus.BAD_GATEWAY, "deckfinder.unreachable",
                     uri.getHost() + " not reachable: " + e.getMessage(),
