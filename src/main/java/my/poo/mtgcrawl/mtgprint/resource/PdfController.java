@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.*;
 
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.CreatePdfDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
+import jakarta.servlet.http.HttpServletRequest;
+import my.poo.mtgcrawl.mtgprint.service.auth.AppUser;
+import my.poo.mtgcrawl.mtgprint.service.auth.AuthService;
 import my.poo.mtgcrawl.mtgprint.service.mail.MailService;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PDFGenerationManagerService;
 import my.poo.mtgcrawl.mtgprint.service.pdf.PdfCacheService;
@@ -24,9 +27,11 @@ public class PdfController {
     private final PdfCacheService pdfCacheService;
     private final PdfSizeLimit pdfSizeLimit;
     private final MailService mailService;
+    private final AuthService authService;
 
     public PdfController(PDFGenerationManagerService pdfGenerationManagerService, PdfCacheService pdfCacheService,
-            PdfSizeLimit pdfSizeLimit, MailService mailService) {
+            PdfSizeLimit pdfSizeLimit, MailService mailService, AuthService authService) {
+        this.authService = authService;
         this.pdfGenerationManagerService = pdfGenerationManagerService;
         this.pdfCacheService = pdfCacheService;
         this.pdfSizeLimit = pdfSizeLimit;
@@ -39,17 +44,21 @@ public class PdfController {
         return Map.of("maxSizeMb", pdfSizeLimit.getMaxSizeMb(), "mailEnabled", mailService.isEnabled());
     }
 
+    /**
+     * Mit {@code sendMail: true} geht der Download-Link an die Adresse des angemeldeten Kontos.
+     * Eine vom Client gesendete Adresse wird ignoriert, so kann niemand fremden Leuten Mails schicken lassen.
+     */
     @CrossOrigin
     @PostMapping("/pdf")
-    public ResponseEntity<String> startPdfGeneration(@RequestBody CreatePdfDto request) {
-        String email = request.getEmail() == null ? null : request.getEmail().trim();
-        if (email != null && email.isEmpty()) {
-            email = null;
+    public ResponseEntity<String> startPdfGeneration(@RequestBody CreatePdfDto request, HttpServletRequest httpRequest) {
+        request.setEmail(null);
+        if (Boolean.TRUE.equals(request.getSendMail())) {
+            AppUser user = AuthController.currentUser(authService, httpRequest).orElse(null);
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Log in to get the PDF by mail");
+            }
+            request.setEmail(user.email());
         }
-        if (email != null && !MailService.isValidAddress(email)) {
-            return ResponseEntity.badRequest().body("Invalid email address");
-        }
-        request.setEmail(email);
         return ResponseEntity.ok(pdfGenerationManagerService.submitJob(request));
     }
 
