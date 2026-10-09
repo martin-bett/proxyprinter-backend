@@ -189,6 +189,19 @@ public class SearchResultCacheService {
         }
     }
 
+    /** Anzahl der Einträge auf der Platte (auch noch nicht weggeräumte abgelaufene), für /api/stats. */
+    public long countEntries() {
+        if (!Files.isDirectory(cacheDir)) {
+            return 0;
+        }
+        try (Stream<Path> files = Files.walk(cacheDir)) {
+            return files.filter(f -> f.getFileName().toString().endsWith(SUFFIX) && Files.isRegularFile(f)).count();
+        } catch (IOException | java.io.UncheckedIOException e) {
+            log.warn("Could not count search cache entries in {}: {}", cacheDir, e.getMessage());
+            return 0;
+        }
+    }
+
     /** Löscht abgelaufene Einträge, liegengebliebene Temp-Dateien und leere Ordner. */
     @Scheduled(cron = "${searchcache.cleanup.cron:0 45 3 * * *}")
     public int cleanUp() {
