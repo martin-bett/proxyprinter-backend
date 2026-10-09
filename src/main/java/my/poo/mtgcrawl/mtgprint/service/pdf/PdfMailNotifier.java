@@ -32,22 +32,26 @@ public class PdfMailNotifier {
         return publicUrl + "/api/pdf/" + progressId;
     }
 
-    public void sendReady(String to, String progressId, long fileSize) {
-        String text = "Hi,\n\n"
-                + "your proxy PDF is ready" + (fileSize > 0 ? " (" + formatMb(fileSize) + ")" : "") + ". Download it here:\n\n"
+    public void sendReady(String to, String language, String progressId, long fileSize) {
+        String size = fileSize > 0 ? MailTexts.get(language, "ready.size", formatMb(fileSize)) : "";
+        String valid = retentionDays == 1
+                ? MailTexts.get(language, "ready.validOne")
+                : MailTexts.get(language, "ready.validMany", retentionDays);
+        String text = MailTexts.get(language, "greeting") + "\n\n"
+                + MailTexts.get(language, "ready.body", size) + "\n\n"
                 + downloadUrl(progressId) + "\n\n"
-                + "The link works for " + retentionDays + (retentionDays == 1 ? " day" : " days") + ".\n\n"
+                + valid + "\n\n"
                 + "Proxyprinter\n" + publicUrl + "\n";
-        mailService.send(to, "Your proxy PDF is ready", text);
+        mailService.send(to, MailTexts.get(language, "ready.subject"), text);
     }
 
-    public void sendFailed(String to, String reason) {
-        String text = "Hi,\n\n"
-                + "unfortunately your proxy PDF could not be created:\n\n"
+    public void sendFailed(String to, String language, String reason) {
+        String text = MailTexts.get(language, "greeting") + "\n\n"
+                + MailTexts.get(language, "failed.body") + "\n\n"
                 + reason + "\n\n"
-                + "Please try again on " + publicUrl + "\n\n"
+                + MailTexts.get(language, "failed.again", publicUrl) + "\n\n"
                 + "Proxyprinter\n";
-        mailService.send(to, "Your proxy PDF could not be created", text);
+        mailService.send(to, MailTexts.get(language, "failed.subject"), text);
     }
 
     private static String formatMb(long bytes) {
