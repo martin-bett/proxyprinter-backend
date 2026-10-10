@@ -45,6 +45,9 @@ builds the proxy PDF (PDFBox) and sends it by mail. Frontend lives in `martin-be
 - No user-visible text hardcoded in German or English only: API errors carry a `code` + `params` (plus an English `error` fallback; the frontend translates), mail texts live in `src/main/resources/i18n/mail_<lang>.properties` (`MailTexts`, all languages need all keys).
 - Commit and push early and often; open a draft PR early (unpushed work has been lost before).
 - Prefer generic solutions driven by API/gallery configs over source-specific special cases in code.
+- Blocked sources: `proxymaster.blocked_host` (domain incl. subdomains, IP or CIDR; see `sql/2026-10-10_blocked_host.sql`) is checked by `service/net/HostBlocklist`
+  on saving/copying/publishing configs, on delivering configs and in `OutboundUrlGuard`/`GalleryHttp` for every outbound fetch.
+  New config URL fields or new outbound HTTP clients must go through it. Maintained via SQL, reloaded every `blocklist.refresh-seconds`.
 - `archive/` holds old recovered code; don't edit it.
 - Skip labels: PR labels `skip-preview` (no test deployment) and `skip-tests` (skip the `test` job) are evaluated by `ci.yml`
   for PRs to `develop` only. If a change is tiny or has no functional effect, propose them in the PR description with a one-line
