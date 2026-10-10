@@ -43,6 +43,27 @@ public class DocumentGenerator {
 
     public static final String TEMP_PATH = "tmp";
 
+    /** Millimeter in PDF-Punkt (1 pt = 1/72 Zoll), exakt, damit Karten in Originalgröße gedruckt werden. */
+    static final float MM_TO_PT = 72f / 25.4f;
+    /** Mindestrand zwischen Kartenraster und Seitenkante. */
+    static final float MIN_PAGE_MARGIN_MM = 5f;
+    /** Abstand der Schnittlinien-Enden zur Seitenkante. */
+    static final float GRID_MARGIN_MM = 10f / 6;
+
+    /** Wie viele Karten nebeneinander (bzw. untereinander) passen, mit Mindestrand auf beiden Seiten. */
+    static int cardsThatFit(float pageSize, float cardSize, float gap) {
+        if (cardSize <= 0) {
+            return 0;
+        }
+        return Math.max(0, (int) ((pageSize - 2 * MIN_PAGE_MARGIN_MM * MM_TO_PT + gap) / (cardSize + gap)));
+    }
+
+    /** Abstand vom Seitenrand, damit das Raster aus {@code count} Karten mittig sitzt. */
+    static float centeredOffset(float pageSize, int count, float cardSize, float gap) {
+        float gridSize = count * cardSize + Math.max(0, count - 1) * gap;
+        return Math.max(0, (pageSize - gridSize) / 2);
+    }
+
     public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties, String progressId,
             Consumer<ProgressDto> progress) throws IOException {
         try (PDDocument document = new PDDocument()) {
@@ -50,19 +71,19 @@ public class DocumentGenerator {
             float pageWidth = pageSize.getWidth();
             float pageHeight = pageSize.getHeight();
 
-            float pageMargin = 10 * 2.83f; // 10mm Seitenrand
-            float gridMargin = pageMargin / 6; // Verringerter Rand für Gridlines
-            float hMargin = (properties.getHmargin() != null ? properties.getHmargin() : 0) * 2.83f;
-            float vMargin = (properties.getVmargin() != null ? properties.getVmargin() : 0) * 2.83f;
+            float gridMargin = GRID_MARGIN_MM * MM_TO_PT; // Rand der Schnittlinien zum Seitenrand
+            float hMargin = (float) properties.getHmargin() * MM_TO_PT;
+            float vMargin = (float) properties.getVmargin() * MM_TO_PT;
 
-            float cardWidth = properties.getWidth() * 2.83f;
-            float cardHeight = properties.getHeight() * 2.83f;
+            float cardWidth = (float) properties.getWidth() * MM_TO_PT;
+            float cardHeight = (float) properties.getHeight() * MM_TO_PT;
 
-            int cardsPerRow = (int) ((pageWidth - 2 * pageMargin + hMargin) / (cardWidth + hMargin));
-            int cardsPerColumn = (int) ((pageHeight - 2 * pageMargin + vMargin) / (cardHeight + vMargin));
+            int cardsPerRow = cardsThatFit(pageWidth, cardWidth, hMargin);
+            int cardsPerColumn = cardsThatFit(pageHeight, cardHeight, vMargin);
 
-            float startY = pageHeight - pageMargin - cardHeight;
-            float startX = pageMargin;
+            // Raster mittig auf der Seite, damit 3 x 3 echte Karten (63,5 mm) auf A4 passen
+            float startX = centeredOffset(pageWidth, cardsPerRow, cardWidth, hMargin);
+            float startY = pageHeight - centeredOffset(pageHeight, cardsPerColumn, cardHeight, vMargin) - cardHeight;
 
             PDPage page = new PDPage(pageSize);
             document.addPage(page);
@@ -91,8 +112,6 @@ public class DocumentGenerator {
                     document.addPage(page);
                     contentStream = new PDPageContentStream(document, page);
                     pageCount++;
-                    startY = pageHeight - pageMargin - cardHeight;
-                    startX = pageMargin;
                     cardCount = 0;
                     verticalLines.clear();
                     horizontalLines.clear();
@@ -333,7 +352,7 @@ public class DocumentGenerator {
         if (size == null || size < 0) {
             return cardHeight * AUTO_CORNER_RATIO;
         }
-        return Math.min(size.floatValue() * 2.83f, Math.min(cardWidth, cardHeight) / 2);
+        return Math.min(size.floatValue() * MM_TO_PT, Math.min(cardWidth, cardHeight) / 2);
     }
 
     private void drawCorners(PDPageContentStream contentStream, float x, float y, float cornerRadius, float width,

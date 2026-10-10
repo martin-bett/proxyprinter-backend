@@ -89,7 +89,7 @@ class DocumentGeneratorCornerTest {
     void allFourCornersHaveTheSameShape() throws Exception {
         List<float[]> ops = pathOperations(properties(5.0));
         assertEquals(12, ops.size(), "4 corners with moveTo, lineTo, curveTo");
-        float r = 5 * 2.83f;
+        float r = 5 * DocumentGenerator.MM_TO_PT;
         float[] reference = null;
         for (int corner = 0; corner < 4; corner++) {
             float[] m = ops.get(corner * 3);
@@ -119,23 +119,23 @@ class DocumentGeneratorCornerTest {
 
     @Test
     void withoutCornerSizeRadiusIsAnEighthInchOnRealCards() throws Exception {
-        float cardHeight = 88 * 2.83f;
+        float cardHeight = 88 * DocumentGenerator.MM_TO_PT;
         float expected = cardHeight * 3.175f / 88.9f;
-        assertEquals(expected, DocumentGenerator.cornerRadius(properties(null), 63 * 2.83f, cardHeight), 0.0001f);
+        assertEquals(expected, DocumentGenerator.cornerRadius(properties(null), 63 * DocumentGenerator.MM_TO_PT, cardHeight), 0.0001f);
         assertEquals(expected, firstCornerRadius(properties(null)), 0.001f);
         // 88,9 mm hohe Karte: 3,175 mm
-        assertEquals(3.175f * 2.83f, DocumentGenerator.cornerRadius(properties(null), 63.5f * 2.83f, 88.9f * 2.83f), 0.001f);
+        assertEquals(3.175f * DocumentGenerator.MM_TO_PT, DocumentGenerator.cornerRadius(properties(null), 63.5f * DocumentGenerator.MM_TO_PT, 88.9f * DocumentGenerator.MM_TO_PT), 0.001f);
     }
 
     @Test
     void cornerSizeIsRadiusInMillimetres() throws Exception {
-        assertEquals(3.2f * 2.83f, DocumentGenerator.cornerRadius(properties(3.2), 63 * 2.83f, 88 * 2.83f), 0.0001f);
-        assertEquals(3.2f * 2.83f, firstCornerRadius(properties(3.2)), 0.001f);
+        assertEquals(3.2f * DocumentGenerator.MM_TO_PT, DocumentGenerator.cornerRadius(properties(3.2), 63 * DocumentGenerator.MM_TO_PT, 88 * DocumentGenerator.MM_TO_PT), 0.0001f);
+        assertEquals(3.2f * DocumentGenerator.MM_TO_PT, firstCornerRadius(properties(3.2)), 0.001f);
     }
 
     @Test
     void cornerSizeIsCappedAtHalfTheShorterSide() {
-        assertEquals(63 * 2.83f / 2, DocumentGenerator.cornerRadius(properties(100.0), 63 * 2.83f, 88 * 2.83f), 0.0001f);
+        assertEquals(63 * DocumentGenerator.MM_TO_PT / 2, DocumentGenerator.cornerRadius(properties(100.0), 63 * DocumentGenerator.MM_TO_PT, 88 * DocumentGenerator.MM_TO_PT), 0.0001f);
     }
 
     @Test

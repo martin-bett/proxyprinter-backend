@@ -6,10 +6,13 @@ import lombok.Data;
 
 @Data
 public class PdfProperties {
-    private Integer width;
-    private Integer height;
-    private Integer hmargin;
-    private Integer vmargin;
+    /** Kartenbreite in mm, Kommawerte erlaubt (echte Karten: 63,5). */
+    private double width;
+    /** Kartenhöhe in mm, Kommawerte erlaubt (echte Karten: 88,9). */
+    private double height;
+    /** Abstand zwischen den Karten in mm. */
+    private double hmargin;
+    private double vmargin;
     private Integer maxDpi;
     private boolean cutlines;
     private Integer cutlineThickness;
