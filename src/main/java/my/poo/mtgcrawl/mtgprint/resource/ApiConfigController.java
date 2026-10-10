@@ -39,6 +39,7 @@ public class ApiConfigController{
     public List<ApiConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
         return apiConfigRepository.findAllVisible(currentUser.idOrNull(httpRequest))
             .stream()
+            .filter(config -> !apiConfigService.isBlocked(config))
             .map(this::toDTO)
             .collect(Collectors.toList());
     }

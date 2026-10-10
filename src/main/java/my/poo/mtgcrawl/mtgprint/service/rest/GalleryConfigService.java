@@ -12,6 +12,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.dto.GalleryConfigDto;
 import my.poo.mtgcrawl.mtgprint.enums.ApiCategory;
 import my.poo.mtgcrawl.mtgprint.repository.GalleryConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.mapper.GalleryConfigMapper;
+import my.poo.mtgcrawl.mtgprint.service.net.HostBlocklist;
 
 @Service
 @Transactional
@@ -20,6 +21,12 @@ public class GalleryConfigService {
     private GalleryConfigRepository galleryConfigRepository;
     private GalleryConfigMapper mapper;
     private HintTranslationService hintTranslationService;
+    private HostBlocklist blocklist;
+
+    /** Zeigt eine URL der Config auf einen gesperrten Betreiber? Solche Configs werden nicht ausgeliefert. */
+    public boolean isBlocked(GalleryConfig config) {
+        return blocklist.blockedHostIn(config.getBaseUrl(), config.getOfficialWebsite()).isPresent();
+    }
 
     /** Besitzt das Konto die Config? Nicht angemeldet (userId null) besitzt niemand etwas. */
     public static boolean isOwner(GalleryConfig config, Long userId) {
@@ -40,6 +47,7 @@ public class GalleryConfigService {
         if (!isVisible(source, userId)) {
             return null;
         }
+        blocklist.checkConfigUrls(source.getBaseUrl(), source.getOfficialWebsite());
         List<Long> idList = galleryConfigRepository.copyGalleryConfig(source.getId(), ip, userId);
         return idList != null && idList.size() > 0 ? idList.get(0) : null; 
     }
@@ -70,6 +78,7 @@ public class GalleryConfigService {
             return null;
         }
         GalleryConfig config = mapper.toEntity(request);
+        blocklist.checkConfigUrls(config.getBaseUrl(), config.getOfficialWebsite());
         config.setVisitorIdentifier(old.getVisitorIdentifier());
         config.setUserId(old.getUserId());
         // Veröffentlichen geht nur über publish
@@ -128,6 +137,9 @@ public class GalleryConfigService {
         GalleryConfig old = galleryConfigRepository.findById(request.getId()).orElse(null);
         if (!isOwner(old, userId)) {
             return null;
+        }
+        if (request.isPublished()) {
+            blocklist.checkConfigUrls(old.getBaseUrl(), old.getOfficialWebsite());
         }
         old.setPublished(request.isPublished());
         galleryConfigRepository.save(old);

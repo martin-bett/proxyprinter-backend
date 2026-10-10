@@ -14,6 +14,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.ApiConfigConnectedCard;
 import my.poo.mtgcrawl.mtgprint.repository.ApiConfigConnectedCardRepository;
 import my.poo.mtgcrawl.mtgprint.repository.ApiConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.mapper.ApiConfigMapper;
+import my.poo.mtgcrawl.mtgprint.service.net.HostBlocklist;
 
 @Service
 @Transactional
@@ -22,6 +23,12 @@ public class ApiConfigService {
     private ApiConfigRepository apiConfigRepository;
     private ApiConfigConnectedCardRepository connectedCardRepository;
     private ApiConfigMapper mapper;
+    private HostBlocklist blocklist;
+
+    /** Zeigt eine URL der Config auf einen gesperrten Betreiber? Solche Configs werden nicht ausgeliefert. */
+    public boolean isBlocked(ApiConfig config) {
+        return blocklist.blockedHostIn(config.getBaseUrl(), config.getOfficialWebsite()).isPresent();
+    }
 
     /** Besitzt das Konto die Config? Nicht angemeldet (userId null) besitzt niemand etwas. */
     public static boolean isOwner(ApiConfig config, Long userId) {
@@ -43,6 +50,7 @@ public class ApiConfigService {
         if (!isVisible(source, userId)) {
             return null;
         }
+        blocklist.checkConfigUrls(source.getBaseUrl(), source.getOfficialWebsite());
         List<Long> idList = apiConfigRepository.copyApiConfig(source.getId(), ip, userId);
         Long newId = idList != null && idList.size() > 0 ? idList.get(0) : null;
         if (newId != null) {
@@ -88,6 +96,7 @@ public class ApiConfigService {
             return null;
         }
         ApiConfig config = mapper.toEntity(request);
+        blocklist.checkConfigUrls(config.getBaseUrl(), config.getOfficialWebsite());
         config.setVisitorIdentifier(old.getVisitorIdentifier());
         config.setUserId(old.getUserId());
         // Veröffentlichen geht nur über publish
@@ -114,6 +123,9 @@ public class ApiConfigService {
         ApiConfig old = apiConfigRepository.findById(request.getId()).orElse(null);
         if (!isOwner(old, userId)) {
             return null;
+        }
+        if (Boolean.TRUE.equals(request.getPublished())) {
+            blocklist.checkConfigUrls(old.getBaseUrl(), old.getOfficialWebsite());
         }
         old.setPublished(Boolean.TRUE.equals(request.getPublished()));
         old.setLastUsed(LocalDateTime.now());

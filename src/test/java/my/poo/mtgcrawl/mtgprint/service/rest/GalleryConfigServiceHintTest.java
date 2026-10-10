@@ -17,6 +17,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.GalleryConfig;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.GalleryConfigDto;
 import my.poo.mtgcrawl.mtgprint.repository.GalleryConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.mapper.GalleryConfigMapper;
+import my.poo.mtgcrawl.mtgprint.service.net.HostBlocklist;
 
 class GalleryConfigServiceHintTest {
 
@@ -32,7 +33,7 @@ class GalleryConfigServiceHintTest {
         repository = mock(GalleryConfigRepository.class);
         translator = mock(HintTranslationService.class);
         GalleryConfigMapper mapper = Mappers.getMapper(GalleryConfigMapper.class);
-        service = new GalleryConfigService(repository, mapper, translator);
+        service = new GalleryConfigService(repository, mapper, translator, HostBlocklist.NONE);
         old = new GalleryConfig();
         old.setId(1L);
         old.setUserId(OWNER);
