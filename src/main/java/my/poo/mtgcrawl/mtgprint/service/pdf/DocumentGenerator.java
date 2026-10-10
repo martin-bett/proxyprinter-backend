@@ -1,10 +1,19 @@
 package my.poo.mtgcrawl.mtgprint.service.pdf;
 
+import org.apache.pdfbox.cos.COSArray;
+import org.apache.pdfbox.cos.COSBoolean;
+import org.apache.pdfbox.cos.COSDictionary;
+import org.apache.pdfbox.cos.COSFloat;
+import org.apache.pdfbox.cos.COSName;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.common.function.PDFunctionType2;
+import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
+import org.apache.pdfbox.pdmodel.graphics.shading.PDShading;
+import org.apache.pdfbox.pdmodel.graphics.shading.PDShadingType2;
 import org.springframework.stereotype.Service;
 
 import lombok.AllArgsConstructor;
@@ -43,6 +52,27 @@ public class DocumentGenerator {
 
     public static final String TEMP_PATH = "tmp";
 
+    /** Millimeter in PDF-Punkt (1 pt = 1/72 Zoll), exakt, damit Karten in Originalgröße gedruckt werden. */
+    static final float MM_TO_PT = 72f / 25.4f;
+    /** Mindestrand zwischen Kartenraster und Seitenkante. */
+    static final float MIN_PAGE_MARGIN_MM = 5f;
+    /** Abstand der Schnittlinien-Enden zur Seitenkante. */
+    static final float GRID_MARGIN_MM = 10f / 6;
+
+    /** Wie viele Karten nebeneinander (bzw. untereinander) passen, mit Mindestrand auf beiden Seiten. */
+    static int cardsThatFit(float pageSize, float cardSize, float gap) {
+        if (cardSize <= 0) {
+            return 0;
+        }
+        return Math.max(0, (int) ((pageSize - 2 * MIN_PAGE_MARGIN_MM * MM_TO_PT + gap) / (cardSize + gap)));
+    }
+
+    /** Abstand vom Seitenrand, damit das Raster aus {@code count} Karten mittig sitzt. */
+    static float centeredOffset(float pageSize, int count, float cardSize, float gap) {
+        float gridSize = count * cardSize + Math.max(0, count - 1) * gap;
+        return Math.max(0, (pageSize - gridSize) / 2);
+    }
+
     public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties, String progressId,
             Consumer<ProgressDto> progress) throws IOException {
         try (PDDocument document = new PDDocument()) {
@@ -50,19 +80,19 @@ public class DocumentGenerator {
             float pageWidth = pageSize.getWidth();
             float pageHeight = pageSize.getHeight();
 
-            float pageMargin = 10 * 2.83f; // 10mm Seitenrand
-            float gridMargin = pageMargin / 6; // Verringerter Rand für Gridlines
-            float hMargin = (properties.getHmargin() != null ? properties.getHmargin() : 0) * 2.83f;
-            float vMargin = (properties.getVmargin() != null ? properties.getVmargin() : 0) * 2.83f;
+            float gridMargin = GRID_MARGIN_MM * MM_TO_PT; // Rand der Schnittlinien zum Seitenrand
+            float hMargin = (float) properties.getHmargin() * MM_TO_PT;
+            float vMargin = (float) properties.getVmargin() * MM_TO_PT;
 
-            float cardWidth = properties.getWidth() * 2.83f;
-            float cardHeight = properties.getHeight() * 2.83f;
+            float cardWidth = (float) properties.getWidth() * MM_TO_PT;
+            float cardHeight = (float) properties.getHeight() * MM_TO_PT;
 
-            int cardsPerRow = (int) ((pageWidth - 2 * pageMargin + hMargin) / (cardWidth + hMargin));
-            int cardsPerColumn = (int) ((pageHeight - 2 * pageMargin + vMargin) / (cardHeight + vMargin));
+            int cardsPerRow = cardsThatFit(pageWidth, cardWidth, hMargin);
+            int cardsPerColumn = cardsThatFit(pageHeight, cardHeight, vMargin);
 
-            float startY = pageHeight - pageMargin - cardHeight;
-            float startX = pageMargin;
+            // Raster mittig auf der Seite, damit 3 x 3 echte Karten (63,5 mm) auf A4 passen
+            float startX = centeredOffset(pageWidth, cardsPerRow, cardWidth, hMargin);
+            float startY = pageHeight - centeredOffset(pageHeight, cardsPerColumn, cardHeight, vMargin) - cardHeight;
 
             PDPage page = new PDPage(pageSize);
             document.addPage(page);
@@ -91,8 +121,6 @@ public class DocumentGenerator {
                     document.addPage(page);
                     contentStream = new PDPageContentStream(document, page);
                     pageCount++;
-                    startY = pageHeight - pageMargin - cardHeight;
-                    startX = pageMargin;
                     cardCount = 0;
                     verticalLines.clear();
                     horizontalLines.clear();
@@ -112,13 +140,13 @@ public class DocumentGenerator {
                 contentStream.drawImage(image, x, y, cardWidth, cardHeight);
                 log.debug("added image"+ imagePath.getImageUrl());
                 if (properties.isCorners()) {
-                    Color c;
+                    float radius = cornerRadius(properties, cardWidth, cardHeight);
                     if (properties.isCornerColorAuto()) {
-                        c = getBorderColor(image.getImage());
+                        drawAutoColoredCorners(contentStream, image.getImage(), x, y, radius, cardWidth, cardHeight);
                     } else {
-                        c = Color.decode(properties.getCornerColor());
+                        drawCorners(contentStream, x, y, radius, cardWidth, cardHeight,
+                                Color.decode(properties.getCornerColor()));
                     }
-                    drawCorners(contentStream, x, y, cardWidth, cardHeight, c);
                 }
 
                 // Add grid lines for this card
@@ -321,12 +349,90 @@ public class DocumentGenerator {
         }
     }
 
-    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height,
-            Color color) throws IOException {
+    /** Echte Karten: Eckradius 1/8 Zoll (3,175 mm) bei 88,9 mm Höhe; der automatische Radius wächst mit der Kartenhöhe. */
+    static final float AUTO_CORNER_RATIO = 3.175f / 88.9f;
+
+    /**
+     * Radius der abgerundeten Ecke in Punkt. Ohne cornerSize automatisch (AUTO_CORNER_RATIO der Kartenhöhe);
+     * sonst der Wert in mm, höchstens die halbe kürzere Kartenseite.
+     */
+    static float cornerRadius(PdfProperties properties, float cardWidth, float cardHeight) {
+        Double size = properties.getCornerSize();
+        if (size == null || size < 0) {
+            return cardHeight * AUTO_CORNER_RATIO;
+        }
+        return Math.min(size.floatValue() * MM_TO_PT, Math.min(cardWidth, cardHeight) / 2);
+    }
+
+    /**
+     * Automatische Eckfarbe je Ecke: gemessen wird dort, wo der Viertelkreis auf die beiden Kartenkanten trifft.
+     * Sind beide Farben gleich, wird die Ecke einfarbig gefüllt, sonst mit einem Verlauf von der einen Kante zur
+     * anderen, damit sie an beiden Seiten nahtlos an den Kartenrand anschließt.
+     */
+    private void drawAutoColoredCorners(PDPageContentStream contentStream, BufferedImage img, float x, float y,
+            float radius, float width, float height) throws IOException {
+        float[][] corners = { { x, y + height }, { x + width, y + height }, { x, y }, { x + width, y } };
+        for (int quadrant = 0; quadrant < 4; quadrant++) {
+            Color[] edge = cornerEdgeColors(img, quadrant, radius / width, radius / height);
+            drawRoundedCorner(contentStream, corners[quadrant][0], corners[quadrant][1], radius, quadrant,
+                    edge[0], edge[1]);
+        }
+    }
+
+    /**
+     * Farben an den beiden Startpunkten des Eckbogens: [0] auf der waagerechten Kante (oben bzw. unten),
+     * [1] auf der senkrechten Kante (links bzw. rechts). Gemessen knapp hinter dem Startpunkt und etwas
+     * innerhalb der Karte, gemittelt über 3 x 3 Pixel; durchsichtige Pixel zählen nicht. Ohne Messwert gilt
+     * die alte Durchschnittsfarbe der Randmitten.
+     */
+    static Color[] cornerEdgeColors(BufferedImage img, int quadrant, float radiusOfWidth, float radiusOfHeight) {
+        int w = img.getWidth();
+        int h = img.getHeight();
+        int inset = OFFSET + 1;
+        int along = 1 + inset;
+        int rx = Math.min(w - 1 - inset, Math.round(radiusOfWidth * w) + along);
+        int ry = Math.min(h - 1 - inset, Math.round(radiusOfHeight * h) + along);
+        boolean left = quadrant == 0 || quadrant == 2;
+        boolean top = quadrant == 0 || quadrant == 1;
+        int edgeX = left ? inset : w - 1 - inset;
+        int edgeY = top ? inset : h - 1 - inset;
+        int alongX = left ? rx : w - 1 - rx;
+        int alongY = top ? ry : h - 1 - ry;
+
+        Color horizontal = sampleColor(img, alongX, edgeY);
+        Color vertical = sampleColor(img, edgeX, alongY);
+        if (horizontal == null || vertical == null) {
+            Color fallback = getBorderColor(img);
+            horizontal = horizontal != null ? horizontal : fallback;
+            vertical = vertical != null ? vertical : fallback;
+        }
+        return new Color[] { horizontal, vertical };
+    }
+
+    /** Mittelwert über 3 x 3 Pixel um (x, y), ohne (fast) durchsichtige Pixel; null, wenn keiner übrig bleibt. */
+    static Color sampleColor(BufferedImage img, int x, int y) {
+        int r = 0, g = 0, b = 0, n = 0;
+        for (int dy = -1; dy <= 1; dy++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                int px = Math.max(0, Math.min(img.getWidth() - 1, x + dx));
+                int py = Math.max(0, Math.min(img.getHeight() - 1, y + dy));
+                int argb = img.getRGB(px, py);
+                if (img.getColorModel().hasAlpha() && (argb >>> 24) < 128) {
+                    continue;
+                }
+                r += (argb >> 16) & 0xFF;
+                g += (argb >> 8) & 0xFF;
+                b += argb & 0xFF;
+                n++;
+            }
+        }
+        return n == 0 ? null : new Color(r / n, g / n, b / n);
+    }
+
+    private void drawCorners(PDPageContentStream contentStream, float x, float y, float cornerRadius, float width,
+            float height, Color color) throws IOException {
 
         contentStream.setNonStrokingColor(color);
-
-        float cornerRadius = height * 0.03f; // Radius der abgerundeten Ecke
 
         // Top-left corner
         drawRoundedCorner(contentStream, x, y + height, cornerRadius, 0);
@@ -341,59 +447,109 @@ public class DocumentGenerator {
         drawRoundedCorner(contentStream, x + width, y, cornerRadius, 3);
     }
 
-    private void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
+    /** Bézier-Faktor für einen Viertelkreis: Kontrollpunkte liegen KAPPA * r auf den Tangenten. */
+    static final float KAPPA = 0.5523f;
+
+    /**
+     * Füllt die Fläche zwischen Kartenecke und Viertelkreis mit Radius {@code radius}: Kartenecke, entlang der
+     * waagerechten Kante, Viertelkreis bis zur senkrechten Kante, zurück zur Ecke. Alle vier Ecken nutzen dieselbe
+     * Konstruktion, nur gespiegelt. Früher lagen die Kontrollpunkte bei oben rechts und unten links in vertauschter
+     * Reihenfolge, deshalb waren diese Ecken flacher als die anderen beiden.
+     */
+    static void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
             int quadrant) throws IOException {
-        float startAngle, endAngle;
-        boolean leftSide, bottomSide;
-        float x1, x2, y1, y2;
-        y1 = cornerY;
-        x2 = cornerX;
+        // dx/dy zeigen von der Ecke ins Kartenfeld (PDF-Koordinaten: y wächst nach oben)
+        float dx, dy;
         switch (quadrant) {
             case 0: // Top-left
-                leftSide = true;
-                bottomSide = false;
-                x1 = cornerX + radius;
-                y2 = cornerY - radius;
-                startAngle = 90;
-                endAngle = 180;
+                dx = 1;
+                dy = -1;
                 break;
             case 1: // Top-right
-                bottomSide = false;
-                leftSide = false;
-                x1 = cornerX - radius;
-                y2 = cornerY - radius;
-                startAngle = 00;
-                endAngle = 90;
+                dx = -1;
+                dy = -1;
                 break;
             case 2: // Bottom-left
-                bottomSide = true;
-                leftSide = true;
-                x1 = cornerX + radius;
-                y2 = cornerY + radius;
-                startAngle = 180;
-                endAngle = 270;
+                dx = 1;
+                dy = 1;
                 break;
             case 3: // Bottom-right
-                leftSide = false;
-                bottomSide = true;
-                x1 = cornerX - radius;
-                y2 = cornerY + radius;
-                startAngle = 270;
-                endAngle = 360;
+                dx = -1;
+                dy = 1;
                 break;
             default:
                 throw new IllegalArgumentException("Invalid quadrant");
         }
-
-        contentStream.moveTo(cornerX, cornerY);
-        contentStream.lineTo(x1, y1);
-        contentStream.curveTo(
-                (float) (cornerX + (leftSide ? 1 : -1) * radius + radius * Math.cos(Math.toRadians(startAngle + 35))),
-                (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius * Math.sin(Math.toRadians(startAngle + 35))),
-                (float) (cornerX + (leftSide ? 1 : -1) * radius + radius * Math.cos(Math.toRadians(endAngle - 35))),
-                (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius * Math.sin(Math.toRadians(endAngle - 35))),
-                x2, y2);
-        contentStream.closePath();
+        cornerPath(contentStream, cornerX, cornerY, radius, dx, dy);
         contentStream.fill();
+    }
+
+    /**
+     * Wie {@link #drawRoundedCorner(PDPageContentStream, float, float, float, int)}, aber mit den Farben der
+     * beiden angrenzenden Kartenkanten: gleich (bis auf Rundung) = einfarbig, sonst ein Verlauf von der
+     * waagerechten zur senkrechten Kante, auf die Eckfläche beschnitten.
+     */
+    static void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
+            int quadrant, Color horizontalEdge, Color verticalEdge) throws IOException {
+        if (colorDistance(horizontalEdge, verticalEdge) <= 6) {
+            contentStream.setNonStrokingColor(mix(horizontalEdge, verticalEdge));
+            drawRoundedCorner(contentStream, cornerX, cornerY, radius, quadrant);
+            return;
+        }
+        float dx = quadrant == 0 || quadrant == 2 ? 1 : -1;
+        float dy = quadrant == 0 || quadrant == 1 ? -1 : 1;
+
+        COSDictionary function = new COSDictionary();
+        function.setInt(COSName.FUNCTION_TYPE, 2);
+        function.setItem(COSName.DOMAIN, floats(0, 1));
+        function.setItem(COSName.C0, floats(horizontalEdge.getRGBColorComponents(null)));
+        function.setItem(COSName.C1, floats(verticalEdge.getRGBColorComponents(null)));
+        function.setInt(COSName.N, 1);
+
+        PDShadingType2 shading = new PDShadingType2(new COSDictionary());
+        shading.setShadingType(PDShading.SHADING_TYPE2);
+        shading.setColorSpace(PDDeviceRGB.INSTANCE);
+        shading.setCoords(floats(cornerX + dx * radius, cornerY, cornerX, cornerY + dy * radius));
+        shading.setFunction(new PDFunctionType2(function));
+        COSArray extend = new COSArray();
+        extend.add(COSBoolean.TRUE);
+        extend.add(COSBoolean.TRUE);
+        shading.setExtend(extend);
+
+        contentStream.saveGraphicsState();
+        cornerPath(contentStream, cornerX, cornerY, radius, dx, dy);
+        contentStream.clip();
+        contentStream.shadingFill(shading);
+        contentStream.restoreGraphicsState();
+    }
+
+    /** Eckfläche: Kartenecke, entlang der waagerechten Kante, Viertelkreis bis zur senkrechten Kante, zurück. */
+    private static void cornerPath(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
+            float dx, float dy) throws IOException {
+        float handle = radius * (1 - KAPPA);
+        contentStream.moveTo(cornerX, cornerY);
+        contentStream.lineTo(cornerX + dx * radius, cornerY);
+        contentStream.curveTo(
+                cornerX + dx * handle, cornerY,
+                cornerX, cornerY + dy * handle,
+                cornerX, cornerY + dy * radius);
+        contentStream.closePath();
+    }
+
+    static int colorDistance(Color a, Color b) {
+        return Math.max(Math.abs(a.getRed() - b.getRed()),
+                Math.max(Math.abs(a.getGreen() - b.getGreen()), Math.abs(a.getBlue() - b.getBlue())));
+    }
+
+    static Color mix(Color a, Color b) {
+        return new Color((a.getRed() + b.getRed()) / 2, (a.getGreen() + b.getGreen()) / 2, (a.getBlue() + b.getBlue()) / 2);
+    }
+
+    private static COSArray floats(float... values) {
+        COSArray array = new COSArray();
+        for (float v : values) {
+            array.add(new COSFloat(v));
+        }
+        return array;
     }
 }
