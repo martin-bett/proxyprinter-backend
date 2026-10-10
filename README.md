@@ -3,7 +3,7 @@
 Backend of [proxyprinter.eu](https://proxyprinter.eu): stores API, gallery and deckfinder configs, fetches images
 from configured sources, builds the printable proxy PDF and can send it by mail.
 
-The React frontend lives in [martin-bett/mtgprint-front](https://github.com/martin-bett/mtgprint-front).
+The React frontend lives in [martin-bett/proxyprinter-frontend](https://github.com/martin-bett/proxyprinter-frontend).
 
 ## Stack
 
