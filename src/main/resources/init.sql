@@ -50,6 +50,8 @@ CREATE TABLE proxymaster.gallery_config (
 	image_url_replacement varchar(500) NULL,
 	name_pattern varchar(500) NULL,
 	name_replacement varchar(500) NULL,
+	hint varchar(1000) NULL,
+	hint_translations text NULL,
 	CONSTRAINT gallery_config_pkey PRIMARY KEY (id)
 );
 

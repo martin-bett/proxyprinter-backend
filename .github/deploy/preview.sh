@@ -150,6 +150,8 @@ EOF
       AUTH_DEV_AUTO_LOGIN: test@proxyprinter.eu
       PDF_MAX_SIZE_MB: "100"
       JAVA_TOOL_OPTIONS: -Xmx512m
+      # Übersetzung der Galerie-Hinweise (optional): Key steht in der .env der Testumgebungen, ohne Key keine Übersetzung
+      DEEPL_API_KEY: \${DEEPL_API_KEY:-}
 EOF
       # Gemeinsamer Such-Cache: nur im develop-Backend an, auf eigenem Volume (überlebt Neuausrollen, getrennt von der Produktion).
       # PR-Backends: Such-Cache aus, speicherintensive Funktionen kurz halten.

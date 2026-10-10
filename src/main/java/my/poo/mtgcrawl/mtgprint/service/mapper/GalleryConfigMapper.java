@@ -1,5 +1,8 @@
 package my.poo.mtgcrawl.mtgprint.service.mapper;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -17,10 +20,12 @@ public interface GalleryConfigMapper {
     @Mapping(target = "parameters", expression = "java(mapMapToParameters(dto.getParameterMap()))")
     @Mapping(target = "category", expression = "java(mapStringToEnum(dto.getCategory()))")
     @Mapping(target = "userId", ignore = true)
+    @Mapping(target = "hintTranslations", expression = "java(translationsToJson(dto.getHintTranslations()))")
     GalleryConfig toEntity(GalleryConfigDto dto); 
 
     @Mapping(target = "parameterMap", expression = "java(mapParametersToMap(apiConfig.getParameters()))")
     @Mapping(target = "category", expression = "java(mapEnumToString(apiConfig.getCategory()))")
+    @Mapping(target = "hintTranslations", expression = "java(translationsFromJson(apiConfig.getHintTranslations()))")
     GalleryConfigDto toDTO(GalleryConfig apiConfig);
     
   default Map<String, Map<String, String>> mapParametersToMap(List<GalleryConfigParameter> parameters) {
@@ -60,6 +65,30 @@ public interface GalleryConfigMapper {
                     });
             })
             .collect(Collectors.toList());
+    }
+
+    ObjectMapper JSON = new ObjectMapper();
+
+    default String translationsToJson(Map<String, String> translations) {
+        if (translations == null || translations.isEmpty()) {
+            return null;
+        }
+        try {
+            return JSON.writeValueAsString(translations);
+        } catch (JsonProcessingException e) {
+            return null;
+        }
+    }
+
+    default Map<String, String> translationsFromJson(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return JSON.readValue(json, new TypeReference<Map<String, String>>() { });
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
         // Enum zu String
