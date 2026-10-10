@@ -55,8 +55,9 @@ public class DocumentGenerator {
             float hMargin = (properties.getHmargin() != null ? properties.getHmargin() : 0) * 2.83f;
             float vMargin = (properties.getVmargin() != null ? properties.getVmargin() : 0) * 2.83f;
 
-            float cardWidth = properties.getWidth() * 2.83f;
-            float cardHeight = properties.getHeight() * 2.83f;
+            // Querliegende Karten belegen einen um 90° gedrehten Platz
+            float cardWidth = (properties.isCardsLandscape() ? properties.getHeight() : properties.getWidth()) * 2.83f;
+            float cardHeight = (properties.isCardsLandscape() ? properties.getWidth() : properties.getHeight()) * 2.83f;
 
             int cardsPerRow = (int) ((pageWidth - 2 * pageMargin + hMargin) / (cardWidth + hMargin));
             int cardsPerColumn = (int) ((pageHeight - 2 * pageMargin + vMargin) / (cardHeight + vMargin));
@@ -157,7 +158,7 @@ public class DocumentGenerator {
     /** A4 hoch oder quer. */
     static PDRectangle pageSize(PdfProperties properties) {
         PDRectangle a4 = PDRectangle.A4;
-        return properties.isLandscape() ? new PDRectangle(a4.getHeight(), a4.getWidth()) : a4;
+        return properties.isPageLandscape() ? new PDRectangle(a4.getHeight(), a4.getWidth()) : a4;
     }
 
     private static long embeddedSize(PDImageXObject image) throws IOException {
@@ -207,6 +208,10 @@ public class DocumentGenerator {
             bufferedImage = scaleImage(bufferedImage, maxWidthPx, maxHeightPx);
         }
     
+        if (properties.isCardsLandscape()) {
+            bufferedImage = rotateClockwise(bufferedImage);
+        }
+
         // Konvertiere BufferedImage zu byte array
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(bufferedImage, "png", baos);
@@ -217,6 +222,19 @@ public class DocumentGenerator {
     }
     
     
+    static BufferedImage rotateClockwise(BufferedImage image) {
+        int w = image.getWidth();
+        int h = image.getHeight();
+        int type = image.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
+        BufferedImage rotated = new BufferedImage(h, w, type);
+        Graphics2D g2d = rotated.createGraphics();
+        g2d.translate(h, 0);
+        g2d.rotate(Math.PI / 2);
+        g2d.drawImage(image, 0, 0, null);
+        g2d.dispose();
+        return rotated;
+    }
+
     private BufferedImage scaleImage(BufferedImage originalImage, int maxWidth, int maxHeight) {
         int newWidth = originalImage.getWidth();
         int newHeight = originalImage.getHeight();
@@ -332,7 +350,8 @@ public class DocumentGenerator {
 
         contentStream.setNonStrokingColor(color);
 
-        float cornerRadius = height * 0.03f; // Radius der abgerundeten Ecke
+        // Radius der abgerundeten Ecke: 3 % der langen Kartenseite, auch bei querliegenden Karten
+        float cornerRadius = Math.max(width, height) * 0.03f;
 
         // Top-left corner
         drawRoundedCorner(contentStream, x, y + height, cornerRadius, 0);
