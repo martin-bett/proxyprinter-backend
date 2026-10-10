@@ -18,7 +18,7 @@ class AuthServiceTest {
 
     private final AuthRepository repository = mock(AuthRepository.class);
     private final MailService mail = mock(MailService.class);
-    private final AuthService service = new AuthService(repository, mail, "https://example.test/", false, false);
+    private final AuthService service = new AuthService(repository, mail, "https://example.test/", false, false, "");
 
     private String sentText() {
         ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
@@ -57,7 +57,7 @@ class AuthServiceTest {
     @Test
     void localLinkLoggingEnablesLoginWithoutMail() {
         when(mail.isEnabled()).thenReturn(false);
-        AuthService local = new AuthService(repository, mail, "http://localhost:3000", true, false);
+        AuthService local = new AuthService(repository, mail, "http://localhost:3000", true, false, "");
         assertTrue(local.isLoginEnabled());
         assertEquals(RequestResult.SENT, local.requestLogin("a@b.de", "1.1.1.1").result());
         verify(mail, never()).send(anyString(), anyString(), anyString());
@@ -66,7 +66,7 @@ class AuthServiceTest {
     @Test
     void testEnvironmentReturnsTheCodeInsteadOfMailing() {
         when(mail.isEnabled()).thenReturn(false);
-        AuthService test = new AuthService(repository, mail, "https://x.test", false, true);
+        AuthService test = new AuthService(repository, mail, "https://x.test", false, true, "");
         assertTrue(test.isLoginEnabled());
 
         AuthService.LoginRequest result = test.requestLogin("a@b.de", "1.1.1.1");
@@ -144,5 +144,30 @@ class AuthServiceTest {
         verify(repository).touchSession(AuthService.hash("sess"));
         assertTrue(service.findUser(null).isEmpty());
         assertTrue(service.findUser("other").isEmpty());
+    }
+
+    @Test
+    void autoLoginStartsASessionForTheTestAccount() {
+        when(mail.isEnabled()).thenReturn(false);
+        when(repository.findOrCreateUser("test@proxyprinter.eu")).thenReturn(new AppUser(7, "test@proxyprinter.eu", LocalDateTime.now()));
+        AuthService test = new AuthService(repository, mail, "https://abc123.test.proxyprinter.eu", false, false, " Test@Proxyprinter.eu ");
+
+        assertTrue(test.isAutoLoginEnabled());
+        assertTrue(test.isLoginEnabled());
+        String session = test.autoLogin("Browser").orElseThrow();
+
+        verify(repository).insertSession(AuthService.hash(session), 7L, "Browser");
+        assertFalse(service.isAutoLoginEnabled());
+        assertTrue(service.autoLogin("Browser").isEmpty());
+    }
+
+    @Test
+    void autoLoginIsIgnoredOnTheProductionDomainAndForInvalidAddresses() {
+        assertNull(AuthService.autoLoginEmail("test@proxyprinter.eu", "https://proxyprinter.eu"));
+        assertNull(AuthService.autoLoginEmail("test@proxyprinter.eu", "https://www.proxyprinter.eu/"));
+        assertNull(AuthService.autoLoginEmail("test@proxyprinter.eu", "HTTPS://ProxyPrinter.EU:443"));
+        assertNull(AuthService.autoLoginEmail("nonsense", "https://test.proxyprinter.eu"));
+        assertNull(AuthService.autoLoginEmail("", "https://test.proxyprinter.eu"));
+        assertEquals("test@proxyprinter.eu", AuthService.autoLoginEmail("test@proxyprinter.eu", "https://test.proxyprinter.eu"));
     }
 }
