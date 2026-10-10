@@ -18,7 +18,7 @@ public class PdfProperties {
     private boolean cornerColorAuto;
     private String cornerColor;
     /**
-     * Radius der Eckmarken in mm. Leer = automatisch (3 % der Kartenhöhe, wie bisher).
+     * Radius der Eckmarken in mm. Leer = automatisch (1/8 Zoll bei echter Kartengröße, wächst mit der Kartenhöhe).
      * NON_NULL, damit der Request-Hash (PDF-Cache) ohne den Wert gleich bleibt.
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)

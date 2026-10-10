@@ -321,14 +321,17 @@ public class DocumentGenerator {
         }
     }
 
+    /** Echte Karten: Eckradius 1/8 Zoll (3,175 mm) bei 88,9 mm Höhe; der automatische Radius wächst mit der Kartenhöhe. */
+    static final float AUTO_CORNER_RATIO = 3.175f / 88.9f;
+
     /**
-     * Radius der abgerundeten Ecke in Punkt. Ohne cornerSize wie bisher 3 % der Kartenhöhe;
+     * Radius der abgerundeten Ecke in Punkt. Ohne cornerSize automatisch (AUTO_CORNER_RATIO der Kartenhöhe);
      * sonst der Wert in mm, höchstens die halbe kürzere Kartenseite.
      */
     static float cornerRadius(PdfProperties properties, float cardWidth, float cardHeight) {
         Double size = properties.getCornerSize();
         if (size == null || size < 0) {
-            return cardHeight * 0.03f;
+            return cardHeight * AUTO_CORNER_RATIO;
         }
         return Math.min(size.floatValue() * 2.83f, Math.min(cardWidth, cardHeight) / 2);
     }

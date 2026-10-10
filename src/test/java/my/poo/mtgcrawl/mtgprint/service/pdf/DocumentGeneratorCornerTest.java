@@ -118,10 +118,13 @@ class DocumentGeneratorCornerTest {
     }
 
     @Test
-    void withoutCornerSizeRadiusStaysThreePercentOfCardHeight() throws Exception {
+    void withoutCornerSizeRadiusIsAnEighthInchOnRealCards() throws Exception {
         float cardHeight = 88 * 2.83f;
-        assertEquals(cardHeight * 0.03f, DocumentGenerator.cornerRadius(properties(null), 63 * 2.83f, cardHeight));
-        assertEquals(cardHeight * 0.03f, firstCornerRadius(properties(null)), 0.001f);
+        float expected = cardHeight * 3.175f / 88.9f;
+        assertEquals(expected, DocumentGenerator.cornerRadius(properties(null), 63 * 2.83f, cardHeight), 0.0001f);
+        assertEquals(expected, firstCornerRadius(properties(null)), 0.001f);
+        // 88,9 mm hohe Karte: 3,175 mm
+        assertEquals(3.175f * 2.83f, DocumentGenerator.cornerRadius(properties(null), 63.5f * 2.83f, 88.9f * 2.83f), 0.001f);
     }
 
     @Test
