@@ -1,7 +1,7 @@
 # CLAUDE.md – mtgprint (Backend)
 
 Spring Boot backend for proxyprinter.eu: stores API/gallery/deckfinder configs in Postgres, proxies images,
-builds the proxy PDF (PDFBox) and sends it by mail. Frontend lives in `martin-bett/mtgprint-front`.
+builds the proxy PDF (PDFBox) and sends it by mail. Frontend lives in `martin-bett/proxyprinter-frontend`.
 
 ## Stack
 - Spring Boot 3.5.6, Java 25 (`java.version` in `pom.xml`), packaged as WAR (`target/mtgprint-0.0.1-SNAPSHOT.war`)
