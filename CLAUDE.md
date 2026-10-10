@@ -48,6 +48,8 @@ builds the proxy PDF (PDFBox) and sends it by mail. Frontend lives in `martin-be
 - Blocked sources: `proxymaster.blocked_host` (domain incl. subdomains, IP or CIDR; see `sql/2026-10-10_blocked_host.sql`) is checked by `service/net/HostBlocklist`
   on saving/copying/publishing configs, on delivering configs and in `OutboundUrlGuard`/`GalleryHttp` for every outbound fetch.
   New config URL fields or new outbound HTTP clients must go through it. Maintained via SQL, reloaded every `blocklist.refresh-seconds`.
+  Operators can also block their own host via `/api/blocklist` (`service/optout/`): mail link to admin@/webmaster@/… of the domain,
+  or a token as DNS TXT `_proxyprinter-verify.<host>` / file `/.well-known/proxyprinter-verify.txt` (no redirects followed).
 - `archive/` holds old recovered code; don't edit it.
 - Skip labels: PR labels `skip-preview` (no test deployment) and `skip-tests` (skip the `test` job) are evaluated by `ci.yml`
   for PRs to `develop` only. If a change is tiny or has no functional effect, propose them in the PR description with a one-line

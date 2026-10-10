@@ -119,12 +119,22 @@ public class HostBlocklist {
         return current.domains.stream().anyMatch(d -> normalized.equals(d) || normalized.endsWith("." + d));
     }
 
+    /** Nach einer Änderung der Tabelle: beim nächsten Zugriff neu lesen. */
+    public void invalidate() {
+        loadedAt = null;
+    }
+
+    /** IP-Literal ohne DNS-Abfrage? */
+    public static boolean isIpLiteral(String host) {
+        return literal(normalize(host)).isPresent();
+    }
+
     private static BlockedUrlException blocked(String host) {
         return new BlockedUrlException(CODE, host + " is blocked at the request of its operator.", Map.of("host", host));
     }
 
     /** Host einer (auch unvollständigen) URL ohne Benutzer und Port; ohne Schema wird der Anfang als Host gelesen. */
-    static Optional<String> hostOf(String url) {
+    public static Optional<String> hostOf(String url) {
         if (url == null || url.isBlank()) {
             return Optional.empty();
         }
