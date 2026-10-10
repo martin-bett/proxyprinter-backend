@@ -15,4 +15,6 @@ public class PdfProperties {
     private boolean corners;
     private boolean cornerColorAuto;
     private String cornerColor;
+    /** Seite im Querformat; die Karten bleiben aufrecht, nur das Raster passt sich an. */
+    private boolean landscape;
 }

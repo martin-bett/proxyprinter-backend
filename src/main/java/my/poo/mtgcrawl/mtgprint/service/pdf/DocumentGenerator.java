@@ -46,7 +46,7 @@ public class DocumentGenerator {
     public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties, String progressId,
             Consumer<ProgressDto> progress) throws IOException {
         try (PDDocument document = new PDDocument()) {
-            PDRectangle pageSize = PDRectangle.A4;
+            PDRectangle pageSize = pageSize(properties);
             float pageWidth = pageSize.getWidth();
             float pageHeight = pageSize.getHeight();
 
@@ -152,6 +152,12 @@ public class DocumentGenerator {
             log.debug("finished document "+ result.length/1000 +" KB");
             return result;
         }
+    }
+
+    /** A4 hoch oder quer. */
+    static PDRectangle pageSize(PdfProperties properties) {
+        PDRectangle a4 = PDRectangle.A4;
+        return properties.isLandscape() ? new PDRectangle(a4.getHeight(), a4.getWidth()) : a4;
     }
 
     private static long embeddedSize(PDImageXObject image) throws IOException {
