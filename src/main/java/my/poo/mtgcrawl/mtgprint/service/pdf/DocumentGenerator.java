@@ -351,58 +351,47 @@ public class DocumentGenerator {
         drawRoundedCorner(contentStream, x + width, y, cornerRadius, 3);
     }
 
-    private void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
+    /** Bézier-Faktor für einen Viertelkreis: Kontrollpunkte liegen KAPPA * r auf den Tangenten. */
+    static final float KAPPA = 0.5523f;
+
+    /**
+     * Füllt die Fläche zwischen Kartenecke und Viertelkreis mit Radius {@code radius}: Kartenecke, entlang der
+     * waagerechten Kante, Viertelkreis bis zur senkrechten Kante, zurück zur Ecke. Alle vier Ecken nutzen dieselbe
+     * Konstruktion, nur gespiegelt. Früher lagen die Kontrollpunkte bei oben rechts und unten links in vertauschter
+     * Reihenfolge, deshalb waren diese Ecken flacher als die anderen beiden.
+     */
+    static void drawRoundedCorner(PDPageContentStream contentStream, float cornerX, float cornerY, float radius,
             int quadrant) throws IOException {
-        float startAngle, endAngle;
-        boolean leftSide, bottomSide;
-        float x1, x2, y1, y2;
-        y1 = cornerY;
-        x2 = cornerX;
+        // dx/dy zeigen von der Ecke ins Kartenfeld (PDF-Koordinaten: y wächst nach oben)
+        float dx, dy;
         switch (quadrant) {
             case 0: // Top-left
-                leftSide = true;
-                bottomSide = false;
-                x1 = cornerX + radius;
-                y2 = cornerY - radius;
-                startAngle = 90;
-                endAngle = 180;
+                dx = 1;
+                dy = -1;
                 break;
             case 1: // Top-right
-                bottomSide = false;
-                leftSide = false;
-                x1 = cornerX - radius;
-                y2 = cornerY - radius;
-                startAngle = 00;
-                endAngle = 90;
+                dx = -1;
+                dy = -1;
                 break;
             case 2: // Bottom-left
-                bottomSide = true;
-                leftSide = true;
-                x1 = cornerX + radius;
-                y2 = cornerY + radius;
-                startAngle = 180;
-                endAngle = 270;
+                dx = 1;
+                dy = 1;
                 break;
             case 3: // Bottom-right
-                leftSide = false;
-                bottomSide = true;
-                x1 = cornerX - radius;
-                y2 = cornerY + radius;
-                startAngle = 270;
-                endAngle = 360;
+                dx = -1;
+                dy = 1;
                 break;
             default:
                 throw new IllegalArgumentException("Invalid quadrant");
         }
+        float handle = radius * (1 - KAPPA);
 
         contentStream.moveTo(cornerX, cornerY);
-        contentStream.lineTo(x1, y1);
+        contentStream.lineTo(cornerX + dx * radius, cornerY);
         contentStream.curveTo(
-                (float) (cornerX + (leftSide ? 1 : -1) * radius + radius * Math.cos(Math.toRadians(startAngle + 35))),
-                (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius * Math.sin(Math.toRadians(startAngle + 35))),
-                (float) (cornerX + (leftSide ? 1 : -1) * radius + radius * Math.cos(Math.toRadians(endAngle - 35))),
-                (float) (cornerY + (bottomSide ? 1 : -1) * radius + radius * Math.sin(Math.toRadians(endAngle - 35))),
-                x2, y2);
+                cornerX + dx * handle, cornerY,
+                cornerX, cornerY + dy * handle,
+                cornerX, cornerY + dy * radius);
         contentStream.closePath();
         contentStream.fill();
     }

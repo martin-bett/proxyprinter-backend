@@ -39,8 +39,8 @@ class DocumentGeneratorCornerTest {
         return p;
     }
 
-    /** Radius der ersten Eckmarke (oben links) aus dem Content-Stream: lineTo.x - moveTo.x. */
-    private float firstCornerRadius(PdfProperties properties) throws Exception {
+    /** Operanden der Pfad-Operatoren m, l und c der Seite 1, in Reihenfolge. */
+    private List<float[]> pathOperations(PdfProperties properties) throws Exception {
         BufferedImage img = new BufferedImage(63, 88, BufferedImage.TYPE_INT_RGB);
         File file = tempDir.resolve("card.png").toFile();
         ImageIO.write(img, "png", file);
@@ -54,18 +54,67 @@ class DocumentGeneratorCornerTest {
             PDFStreamParser parser = new PDFStreamParser(doc.getPage(0));
             parser.parse();
             List<Object> tokens = parser.getTokens();
-            Float moveX = null;
+            List<float[]> ops = new ArrayList<>();
             for (int i = 0; i < tokens.size(); i++) {
                 if (tokens.get(i) instanceof Operator op) {
-                    if (moveX == null && op.getName().equals("m")) {
-                        moveX = ((COSNumber) tokens.get(i - 2)).floatValue();
-                    } else if (moveX != null && op.getName().equals("l")) {
-                        return ((COSNumber) tokens.get(i - 2)).floatValue() - moveX;
+                    int n = switch (op.getName()) {
+                        case "m", "l" -> 2;
+                        case "c" -> 6;
+                        default -> 0;
+                    };
+                    if (n > 0) {
+                        float[] values = new float[n];
+                        for (int k = 0; k < n; k++) {
+                            values[k] = ((COSNumber) tokens.get(i - n + k)).floatValue();
+                        }
+                        ops.add(values);
                     }
                 }
             }
+            return ops;
         }
-        throw new AssertionError("no corner path found");
+    }
+
+    /** Radius der ersten Eckmarke (oben links) aus dem Content-Stream: lineTo.x - moveTo.x. */
+    private float firstCornerRadius(PdfProperties properties) throws Exception {
+        List<float[]> ops = pathOperations(properties);
+        return ops.get(1)[0] - ops.get(0)[0];
+    }
+
+    /**
+     * Alle vier Ecken sind dieselbe Form, nur gespiegelt: Abstände der Punkte zur Kartenecke stimmen überein,
+     * und die Kurvenmitte liegt auf dem Viertelkreis um den Mittelpunkt (r, r) von der Ecke aus.
+     */
+    @Test
+    void allFourCornersHaveTheSameShape() throws Exception {
+        List<float[]> ops = pathOperations(properties(5.0));
+        assertEquals(12, ops.size(), "4 corners with moveTo, lineTo, curveTo");
+        float r = 5 * 2.83f;
+        float[] reference = null;
+        for (int corner = 0; corner < 4; corner++) {
+            float[] m = ops.get(corner * 3);
+            float[] l = ops.get(corner * 3 + 1);
+            float[] c = ops.get(corner * 3 + 2);
+            // Abstände relativ zur Ecke, Vorzeichen weg (Spiegelung)
+            float[] shape = {
+                    Math.abs(l[0] - m[0]), Math.abs(l[1] - m[1]),
+                    Math.abs(c[0] - m[0]), Math.abs(c[1] - m[1]),
+                    Math.abs(c[2] - m[0]), Math.abs(c[3] - m[1]),
+                    Math.abs(c[4] - m[0]), Math.abs(c[5] - m[1]) };
+            if (reference == null) {
+                reference = shape;
+            } else {
+                assertArrayEquals(reference, shape, 0.01f, "corner " + corner);
+            }
+            // Kurvenmitte (t = 0.5) im Abstand r vom Kreismittelpunkt
+            float midX = (l[0] + 3 * c[0] + 3 * c[2] + c[4]) / 8;
+            float midY = (l[1] + 3 * c[1] + 3 * c[3] + c[5]) / 8;
+            float centerX = m[0] + Math.signum(l[0] - m[0]) * r;
+            float centerY = m[1] + Math.signum(c[5] - m[1]) * r;
+            assertEquals(r, (float) Math.hypot(midX - centerX, midY - centerY), 0.01f, "corner " + corner);
+        }
+        assertEquals(r, reference[0], 0.01f);
+        assertEquals(r, reference[7], 0.01f);
     }
 
     @Test
