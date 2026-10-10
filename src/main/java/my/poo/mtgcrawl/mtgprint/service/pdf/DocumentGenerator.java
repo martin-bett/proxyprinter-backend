@@ -118,7 +118,7 @@ public class DocumentGenerator {
                     } else {
                         c = Color.decode(properties.getCornerColor());
                     }
-                    drawCorners(contentStream, x, y, cardWidth, cardHeight, c);
+                    drawCorners(contentStream, x, y, cornerRadius(properties, cardWidth, cardHeight), cardWidth, cardHeight, c);
                 }
 
                 // Add grid lines for this card
@@ -321,12 +321,22 @@ public class DocumentGenerator {
         }
     }
 
-    private void drawCorners(PDPageContentStream contentStream, float x, float y, float width, float height,
-            Color color) throws IOException {
+    /**
+     * Radius der abgerundeten Ecke in Punkt. Ohne cornerSize wie bisher 3 % der Kartenhöhe;
+     * sonst der Wert in mm, höchstens die halbe kürzere Kartenseite.
+     */
+    static float cornerRadius(PdfProperties properties, float cardWidth, float cardHeight) {
+        Double size = properties.getCornerSize();
+        if (size == null || size < 0) {
+            return cardHeight * 0.03f;
+        }
+        return Math.min(size.floatValue() * 2.83f, Math.min(cardWidth, cardHeight) / 2);
+    }
+
+    private void drawCorners(PDPageContentStream contentStream, float x, float y, float cornerRadius, float width,
+            float height, Color color) throws IOException {
 
         contentStream.setNonStrokingColor(color);
-
-        float cornerRadius = height * 0.03f; // Radius der abgerundeten Ecke
 
         // Top-left corner
         drawRoundedCorner(contentStream, x, y + height, cornerRadius, 0);
