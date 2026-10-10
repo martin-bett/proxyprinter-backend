@@ -39,6 +39,7 @@ public class ApiConfigController{
     public List<ApiConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
         return apiConfigRepository.findAllVisible(currentUser.idOrNull(httpRequest))
             .stream()
+            .filter(config -> !apiConfigService.isBlocked(config))
             .map(this::toDTO)
             .collect(Collectors.toList());
     }
@@ -69,6 +70,12 @@ public class ApiConfigController{
     public ResponseEntity<?> markUsed(@RequestBody List<Long> configIds) {
         apiConfigService.markUsed(configIds);
         return ResponseEntity.ok().build();
+    }
+
+    /** Gesperrte unter den übergebenen Config-IDs, damit das Frontend sie aus seiner gespeicherten Auswahl nimmt. */
+    @PostMapping("/blocked")
+    public List<Long> blockedConfigs(@RequestBody List<Long> configIds) {
+        return apiConfigService.blockedOf(configIds);
     }
 
     @PostMapping("/publish")

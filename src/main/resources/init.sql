@@ -214,6 +214,26 @@ CREATE TABLE proxymaster.deck_stats (
     created int NOT NULL DEFAULT 0
 );
 
+-- Gesperrte Quellen (sql/2026-10-10_blocked_host.sql): Domain inkl. Subdomains oder IP/Netz
+CREATE TABLE proxymaster.blocked_host (
+    id bigserial PRIMARY KEY,
+    host varchar(255) NOT NULL UNIQUE,
+    reason text,
+    created_at timestamp NOT NULL DEFAULT now()
+);
+
+-- Offene Anfragen der Selbst-Sperre (sql/2026-10-10_blocklist_request.sql)
+CREATE TABLE proxymaster.blocklist_request (
+    token_hash varchar(64) PRIMARY KEY,
+    host varchar(255) NOT NULL,
+    method varchar(10) NOT NULL,
+    email varchar(320),
+    ip varchar(64),
+    created_at timestamp NOT NULL DEFAULT now(),
+    expires_at timestamp NOT NULL
+);
+CREATE INDEX blocklist_request_host_idx ON proxymaster.blocklist_request (host);
+
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(1, 'MTG'::proxymaster."api_category", 'https://aetherhub.com/', 'aetherhub', false, 'GET', NULL, 'https://aetherhub.com/Card/Search', 2, 'html', NULL, NULL, NULL, true, 'div#cards>div', 'div.item-hidden-text | innerText', NULL, 'img | attr:data-src', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);

@@ -21,7 +21,7 @@ class MailTextsTest {
     @Test
     void everyLanguageHasEveryTextWithoutLeftoverQuotes() {
         List<String> keys = List.of("greeting", "ready.subject", "ready.body", "ready.size", "ready.validOne",
-                "ready.validMany", "failed.subject", "failed.body", "failed.again");
+                "ready.validMany", "failed.subject", "failed.body", "failed.again", "optout.subject", "optout.body", "optout.link", "optout.ignore");
         for (String language : MailTexts.LANGUAGES) {
             for (String key : keys) {
                 String text = MailTexts.get(language, key, "7");

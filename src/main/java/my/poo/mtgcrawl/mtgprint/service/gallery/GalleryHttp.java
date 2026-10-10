@@ -12,6 +12,8 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
+import my.poo.mtgcrawl.mtgprint.service.net.HostBlocklist;
+
 /** Kleiner HTTP-Helfer für die Galerie-Quellen, damit die Quellen in Tests ersetzbar sind. */
 @Component
 public class GalleryHttp {
@@ -21,6 +23,12 @@ public class GalleryHttp {
             .proxy(ProxySelector.getDefault())
             .connectTimeout(Duration.ofSeconds(15))
             .build();
+
+    private final HostBlocklist blocklist;
+
+    public GalleryHttp(HostBlocklist blocklist) {
+        this.blocklist = blocklist;
+    }
 
     public HttpResponse<String> get(String url, Map<String, String> headers) {
         HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(url))
@@ -40,6 +48,8 @@ public class GalleryHttp {
     }
 
     private HttpResponse<String> send(HttpRequest request) {
+        // Jede Station (auch Weiterleitungen, GalleryFetchService folgt ihnen einzeln) gegen gesperrte Betreiber prüfen
+        blocklist.check(request.uri());
         try {
             return client.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (IOException e) {

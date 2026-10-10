@@ -41,6 +41,7 @@ public class GalleryConfigController {
     public List<GalleryConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
         return galleryConfigRepository.findAllVisible(currentUser.idOrNull(httpRequest))
             .stream()
+            .filter(config -> !galleryConfigService.isBlocked(config))
             .map(mapper::toDTO)
             .collect(Collectors.toList());
     }
@@ -98,7 +99,7 @@ public class GalleryConfigController {
             @PathVariable GalleryConfig configId,
             @RequestParam(value = "input", required = false) String input,
             HttpServletRequest httpRequest) {
-        if (!GalleryConfigService.isVisible(configId, currentUser.idOrNull(httpRequest))) {
+        if (!GalleryConfigService.isVisible(configId, currentUser.idOrNull(httpRequest)) || galleryConfigService.isBlocked(configId)) {
             throw new GallerySourceException(HttpStatus.NOT_FOUND, "gallery.configNotFound", "Gallery config not found.", Map.of());
         }
         GalleryFetchService.GalleryResponse response = galleryFetchService.fetch(configId, input);
