@@ -31,6 +31,8 @@ import my.poo.mtgcrawl.mtgprint.service.rest.GalleryConfigService;
 public class AuthController {
 
     public static final String COOKIE = "pp_session";
+    /** Nach einem Logout in Testumgebungen: kein automatischer Login mehr, bis wieder jemand sich anmeldet. */
+    static final String NO_AUTO_LOGIN_COOKIE = "pp_no_auto_login";
 
     private final AuthService authService;
     private final ApiConfigService apiConfigService;
@@ -53,26 +55,37 @@ public class AuthController {
     }
 
     static String sessionToken(HttpServletRequest request) {
+        return cookieValue(request, COOKIE);
+    }
+
+    private static String cookieValue(HttpServletRequest request, String name) {
         if (request.getCookies() == null) {
             return null;
         }
         for (Cookie cookie : request.getCookies()) {
-            if (COOKIE.equals(cookie.getName())) {
+            if (name.equals(cookie.getName())) {
                 return cookie.getValue();
             }
         }
         return null;
     }
 
-    /** Ob Login möglich ist und wer gerade angemeldet ist. */
+    /** Ob Login möglich ist und wer gerade angemeldet ist. In Testumgebungen (auth.dev-auto-login) meldet es das Testkonto an. */
     @GetMapping("/me")
     public ResponseEntity<Map<String, Object>> me(HttpServletRequest request) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("loginEnabled", authService.isLoginEnabled());
         Optional<AppUser> user = currentUser(authService, request);
+        String token = sessionToken(request);
+        if (user.isEmpty() && authService.isAutoLoginEnabled() && cookieValue(request, NO_AUTO_LOGIN_COOKIE) == null) {
+            Optional<String> session = authService.autoLogin(request.getHeader(HttpHeaders.USER_AGENT));
+            if (session.isPresent()) {
+                token = session.get();
+                user = authService.findUser(token);
+            }
+        }
         body.put("email", user.map(AppUser::email).orElse(null));
         ResponseEntity.BodyBuilder response = ResponseEntity.ok();
-        String token = sessionToken(request);
         if (user.isPresent() && token != null) {
             response.header(HttpHeaders.SET_COOKIE, cookie(token, Duration.ofDays(AuthService.SESSION_DAYS)).toString());
         }
@@ -111,15 +124,24 @@ public class AuthController {
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("loginEnabled", true);
         result.put("email", authService.findUser(session.get()).map(AppUser::email).orElse(null));
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie(session.get(), Duration.ofDays(AuthService.SESSION_DAYS)).toString())
-                .body(result);
+        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie(session.get(), Duration.ofDays(AuthService.SESSION_DAYS)).toString());
+        if (cookieValue(request, NO_AUTO_LOGIN_COOKIE) != null) {
+            response.header(HttpHeaders.SET_COOKIE, cookie(NO_AUTO_LOGIN_COOKIE, "", Duration.ZERO).toString());
+        }
+        return response.body(result);
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletRequest request) {
         authService.logout(sessionToken(request));
-        return ResponseEntity.noContent().header(HttpHeaders.SET_COOKIE, cookie("", Duration.ZERO).toString()).build();
+        ResponseEntity.HeadersBuilder<?> response = ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, cookie("", Duration.ZERO).toString());
+        if (authService.isAutoLoginEnabled()) {
+            // Sonst wäre man nach dem nächsten Laden sofort wieder angemeldet und könnte den abgemeldeten Zustand nicht testen
+            response.header(HttpHeaders.SET_COOKIE, cookie(NO_AUTO_LOGIN_COOKIE, "1", Duration.ofDays(AuthService.SESSION_DAYS)).toString());
+        }
+        return response.build();
     }
 
     @PostMapping("/logout-all")
@@ -148,7 +170,11 @@ public class AuthController {
     }
 
     private ResponseCookie cookie(String value, Duration maxAge) {
-        return ResponseCookie.from(COOKIE, value).httpOnly(true).secure(secureCookie).sameSite("Lax").path("/")
+        return cookie(COOKIE, value, maxAge);
+    }
+
+    private ResponseCookie cookie(String name, String value, Duration maxAge) {
+        return ResponseCookie.from(name, value).httpOnly(true).secure(secureCookie).sameSite("Lax").path("/")
                 .maxAge(maxAge).build();
     }
 }

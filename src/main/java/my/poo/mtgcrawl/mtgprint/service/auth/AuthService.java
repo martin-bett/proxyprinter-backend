@@ -44,22 +44,53 @@ public class AuthService {
     private final String publicUrl;
     private final boolean logLinks;
     private final boolean showCode;
+    private final String autoLoginEmail;
     private final Map<String, Deque<Long>> requestsPerKey = new ConcurrentHashMap<>();
 
     public AuthService(AuthRepository repository, MailService mailService,
             @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl,
             @Value("${auth.dev-log-links:false}") boolean logLinks,
-            @Value("${auth.dev-show-code:false}") boolean showCode) {
+            @Value("${auth.dev-show-code:false}") boolean showCode,
+            @Value("${auth.dev-auto-login:}") String autoLogin) {
         this.repository = repository;
         this.mailService = mailService;
         this.publicUrl = publicUrl.endsWith("/") ? publicUrl.substring(0, publicUrl.length() - 1) : publicUrl;
         this.logLinks = logLinks;
         this.showCode = showCode;
+        this.autoLoginEmail = autoLoginEmail(autoLogin, this.publicUrl);
+    }
+
+    /** Adresse für auth.dev-auto-login oder null. Nie auf der Produktions-Domain, auch wenn die Variable dort gesetzt wäre. */
+    static String autoLoginEmail(String configured, String publicUrl) {
+        if (configured == null || configured.isBlank()) {
+            return null;
+        }
+        String host = publicUrl.toLowerCase(Locale.ROOT).replaceFirst("^[a-z]+://", "").replaceFirst("[:/].*$", "");
+        if (host.equals("proxyprinter.eu") || host.equals("www.proxyprinter.eu")) {
+            log.error("auth.dev-auto-login is set on the production domain {}, ignored", host);
+            return null;
+        }
+        String email = normalize(configured);
+        if (email == null) {
+            log.error("auth.dev-auto-login is not a valid address, ignored");
+            return null;
+        }
+        log.warn("Test environment: every visitor without a session is logged in as {} (auth.dev-auto-login)", email);
+        return email;
+    }
+
+    public boolean isAutoLoginEnabled() {
+        return autoLoginEmail != null;
+    }
+
+    /** Nur in Testumgebungen (auth.dev-auto-login): neue Sitzung für das feste Testkonto, ohne Mail und Code. */
+    public Optional<String> autoLogin(String userAgent) {
+        return autoLoginEmail == null ? Optional.empty() : Optional.of(startSession(autoLoginEmail, userAgent));
     }
 
     /** Login geht nur, wenn Mails verschickt werden können (oder lokal/in Testumgebungen der Code anders sichtbar wird). */
     public boolean isLoginEnabled() {
-        return mailService.isEnabled() || logLinks || showCode;
+        return mailService.isEnabled() || logLinks || showCode || autoLoginEmail != null;
     }
 
     public enum RequestResult { SENT, INVALID_EMAIL, DISABLED, RATE_LIMITED }
