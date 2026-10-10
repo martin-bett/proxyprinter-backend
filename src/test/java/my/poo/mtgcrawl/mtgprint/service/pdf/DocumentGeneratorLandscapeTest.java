@@ -84,6 +84,14 @@ class DocumentGeneratorLandscapeTest {
     }
 
     @Test
+    void portraitSettingsKeepTheirJson() throws Exception {
+        // Der PDF-Cache hasht den Request: ohne Querformat darf sich das JSON nicht ändern
+        String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(properties(false, false));
+        assertFalse(json.contains("Landscape"), json);
+        assertTrue(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(properties(true, true)).contains("\"cardsLandscape\":true"));
+    }
+
+    @Test
     void rotatesCardImageClockwise() {
         BufferedImage img = new BufferedImage(2, 3, BufferedImage.TYPE_INT_RGB);
         img.setRGB(0, 0, 0xFF0000); // links oben
