@@ -99,6 +99,21 @@ class BlocklistTest {
     }
 
     @Test
+    void meldetGesperrteConfigsDerGespeichertenAuswahl() throws Exception {
+        long ok = create("/api/configs");
+        long blocked = create("/api/configs");
+        postJson("/api/configs/edit", "{\"id\":" + ok + ",\"name\":\"a\",\"baseUrl\":\"https://fine.test/\"}").andExpect(status().isOk());
+        postJson("/api/configs/edit", "{\"id\":" + blocked + ",\"name\":\"b\",\"baseUrl\":\"https://soon.test/\"}").andExpect(status().isOk());
+        jdbc.update("INSERT INTO proxymaster.blocked_host (host) VALUES ('soon.test')");
+        // ohne Login, wie das Frontend nach dem Abmelden
+        mvc.perform(post("/api/configs/blocked").contentType(MediaType.APPLICATION_JSON)
+                .content("[" + ok + "," + blocked + ",999999999,null]"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0]").value(blocked));
+    }
+
+    @Test
     void proxyRuftGesperrteHostsNichtAb() throws Exception {
         rejected(mvc.perform(post("/api/proxy").header("X-Target-URL", "https://cdn.blocked.test/search")
                 .header("X-Request-Format", "json").header("X-Request-Method", "get")), "cdn.blocked.test");

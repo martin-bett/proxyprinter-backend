@@ -72,6 +72,12 @@ public class ApiConfigController{
         return ResponseEntity.ok().build();
     }
 
+    /** Gesperrte unter den übergebenen Config-IDs, damit das Frontend sie aus seiner gespeicherten Auswahl nimmt. */
+    @PostMapping("/blocked")
+    public List<Long> blockedConfigs(@RequestBody List<Long> configIds) {
+        return apiConfigService.blockedOf(configIds);
+    }
+
     @PostMapping("/publish")
     public ResponseEntity<Long> publishConfig(
             @RequestBody ApiConfigDto request,

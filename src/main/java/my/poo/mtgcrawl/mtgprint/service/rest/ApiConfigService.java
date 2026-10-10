@@ -40,6 +40,16 @@ public class ApiConfigService {
         return config != null && (config.isPublished() || isOwner(config, userId));
     }
 
+    /**
+     * Welche der Configs sind gesperrt? Das Frontend hält die aktive Auswahl im localStorage und behält Configs,
+     * die nicht mehr ausgeliefert werden (z. B. eigene nach dem Abmelden); gesperrte entfernt es damit.
+     */
+    public List<Long> blockedOf(List<Long> ids) {
+        if (ids == null) return List.of();
+        List<Long> valid = ids.stream().filter(Objects::nonNull).distinct().limit(200).toList();
+        return apiConfigRepository.findAllById(valid).stream().filter(this::isBlocked).map(ApiConfig::getId).toList();
+    }
+
     // ip_address markiert weiterhin „von Benutzern angelegt“ (Standard-Configs haben keine, die SQL-Skripte unter sql/ verlassen sich darauf)
     public Long createApiConfig(long userId, String ip) {
         return apiConfigRepository.insertApiConfig("new config", ApiCategory.MISC.name(), ip, userId);
