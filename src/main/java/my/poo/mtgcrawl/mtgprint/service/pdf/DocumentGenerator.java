@@ -76,7 +76,7 @@ public class DocumentGenerator {
     public byte[] generateDocument(List<ImageDto> imagePaths, PdfProperties properties, String progressId,
             Consumer<ProgressDto> progress) throws IOException {
         try (PDDocument document = new PDDocument()) {
-            PDRectangle pageSize = PDRectangle.A4;
+            PDRectangle pageSize = pageSize(properties);
             float pageWidth = pageSize.getWidth();
             float pageHeight = pageSize.getHeight();
 
@@ -84,8 +84,9 @@ public class DocumentGenerator {
             float hMargin = (float) properties.getHmargin() * MM_TO_PT;
             float vMargin = (float) properties.getVmargin() * MM_TO_PT;
 
-            float cardWidth = (float) properties.getWidth() * MM_TO_PT;
-            float cardHeight = (float) properties.getHeight() * MM_TO_PT;
+            // Querliegende Karten belegen einen um 90° gedrehten Platz
+            float cardWidth = (float) (properties.isCardsLandscape() ? properties.getHeight() : properties.getWidth()) * MM_TO_PT;
+            float cardHeight = (float) (properties.isCardsLandscape() ? properties.getWidth() : properties.getHeight()) * MM_TO_PT;
 
             int cardsPerRow = cardsThatFit(pageWidth, cardWidth, hMargin);
             int cardsPerColumn = cardsThatFit(pageHeight, cardHeight, vMargin);
@@ -182,6 +183,12 @@ public class DocumentGenerator {
         }
     }
 
+    /** A4 hoch oder quer. */
+    static PDRectangle pageSize(PdfProperties properties) {
+        PDRectangle a4 = PDRectangle.A4;
+        return properties.isPageLandscape() ? new PDRectangle(a4.getHeight(), a4.getWidth()) : a4;
+    }
+
     private static long embeddedSize(PDImageXObject image) throws IOException {
         long size = image.getCOSObject().getLength();
         PDImageXObject softMask = image.getSoftMask();
@@ -229,6 +236,10 @@ public class DocumentGenerator {
             bufferedImage = scaleImage(bufferedImage, maxWidthPx, maxHeightPx);
         }
     
+        if (properties.isCardsLandscape()) {
+            bufferedImage = rotateClockwise(bufferedImage);
+        }
+
         // Konvertiere BufferedImage zu byte array
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(bufferedImage, "png", baos);
@@ -239,6 +250,19 @@ public class DocumentGenerator {
     }
     
     
+    static BufferedImage rotateClockwise(BufferedImage image) {
+        int w = image.getWidth();
+        int h = image.getHeight();
+        int type = image.getColorModel().hasAlpha() ? BufferedImage.TYPE_INT_ARGB : BufferedImage.TYPE_INT_RGB;
+        BufferedImage rotated = new BufferedImage(h, w, type);
+        Graphics2D g2d = rotated.createGraphics();
+        g2d.translate(h, 0);
+        g2d.rotate(Math.PI / 2);
+        g2d.drawImage(image, 0, 0, null);
+        g2d.dispose();
+        return rotated;
+    }
+
     private BufferedImage scaleImage(BufferedImage originalImage, int maxWidth, int maxHeight) {
         int newWidth = originalImage.getWidth();
         int newHeight = originalImage.getHeight();
@@ -353,13 +377,14 @@ public class DocumentGenerator {
     static final float AUTO_CORNER_RATIO = 3.175f / 88.9f;
 
     /**
-     * Radius der abgerundeten Ecke in Punkt. Ohne cornerSize automatisch (AUTO_CORNER_RATIO der Kartenhöhe);
+     * Radius der abgerundeten Ecke in Punkt. Ohne cornerSize automatisch (AUTO_CORNER_RATIO der Kartenhöhe,
+     * also der langen Seite, damit querliegende Karten denselben Radius bekommen);
      * sonst der Wert in mm, höchstens die halbe kürzere Kartenseite.
      */
     static float cornerRadius(PdfProperties properties, float cardWidth, float cardHeight) {
         Double size = properties.getCornerSize();
         if (size == null || size < 0) {
-            return cardHeight * AUTO_CORNER_RATIO;
+            return Math.max(cardWidth, cardHeight) * AUTO_CORNER_RATIO;
         }
         return Math.min(size.floatValue() * MM_TO_PT, Math.min(cardWidth, cardHeight) / 2);
     }

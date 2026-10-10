@@ -26,4 +26,10 @@ public class PdfProperties {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Double cornerSize;
+    /** Blatt im Querformat (A4 quer). NON_DEFAULT, damit der Request-Hash (PDF-Cache) ohne Querformat gleich bleibt. */
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private boolean pageLandscape;
+    /** Karten quer aufs Blatt legen (um 90° gedreht); width/height bleiben die Maße der aufrechten Karte. */
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private boolean cardsLandscape;
 }
