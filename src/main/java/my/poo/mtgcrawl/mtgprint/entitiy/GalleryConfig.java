@@ -99,4 +99,11 @@ public class GalleryConfig {
     @Column
     private String nameReplacement;
 
+    // Hinweistext für die Ausführung ("Link der Galerie einfügen"), in der Sprache des Autors
+    @Column
+    private String hint;
+    // Übersetzungen des Hinweises als JSON {"de": "...", "en": "..."}; entsteht beim Speichern, null = keine
+    @Column(name = "hint_translations")
+    private String hintTranslations;
+
 }

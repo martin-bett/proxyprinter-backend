@@ -3,6 +3,8 @@ package my.poo.mtgcrawl.mtgprint.service.rest;
 
 import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import jakarta.transaction.Transactional;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.entitiy.GalleryConfig;
@@ -17,6 +19,7 @@ import my.poo.mtgcrawl.mtgprint.service.mapper.GalleryConfigMapper;
 public class GalleryConfigService {
     private GalleryConfigRepository galleryConfigRepository;
     private GalleryConfigMapper mapper;
+    private HintTranslationService hintTranslationService;
 
     /** Besitzt das Konto die Config? Nicht angemeldet (userId null) besitzt niemand etwas. */
     public static boolean isOwner(GalleryConfig config, Long userId) {
@@ -71,9 +74,56 @@ public class GalleryConfigService {
         config.setUserId(old.getUserId());
         // Veröffentlichen geht nur über publish
         config.setPublished(old.isPublished());
+        applyHint(config, old, request);
         return galleryConfigRepository.save(config).getId();
     }
     
+    static final int MAX_HINT_LENGTH = 1000;
+
+    /**
+     * Hinweis säubern und Übersetzungen setzen: Ändert sich der Hinweis, wird neu übersetzt (DeepL);
+     * bleibt er gleich, gelten die mitgeschickten Übersetzungen, sonst die gespeicherten.
+     */
+    private void applyHint(GalleryConfig config, GalleryConfig old, GalleryConfigDto request) {
+        String hint = cleanText(request.getHint());
+        config.setHint(hint);
+        if (hint == null) {
+            config.setHintTranslations(null);
+            return;
+        }
+        Map<String, String> translations;
+        if (!Objects.equals(hint, old.getHint())) {
+            translations = hintTranslationService.translate(hint);
+        } else if (request.getHintTranslations() != null) {
+            translations = request.getHintTranslations();
+        } else {
+            translations = mapper.translationsFromJson(old.getHintTranslations());
+        }
+        config.setHintTranslations(mapper.translationsToJson(cleanTranslations(translations)));
+    }
+
+    private static String cleanText(String text) {
+        if (text == null || text.isBlank()) {
+            return null;
+        }
+        String trimmed = text.trim();
+        return trimmed.length() > MAX_HINT_LENGTH ? trimmed.substring(0, MAX_HINT_LENGTH) : trimmed;
+    }
+
+    /** Nur bekannte UI-Sprachen und nicht leere, begrenzte Texte. */
+    private static Map<String, String> cleanTranslations(Map<String, String> translations) {
+        Map<String, String> clean = new java.util.TreeMap<>();
+        if (translations != null) {
+            translations.forEach((lang, text) -> {
+                String value = cleanText(text);
+                if (lang != null && HintTranslationService.TARGETS.containsKey(lang) && value != null) {
+                    clean.put(lang, value);
+                }
+            });
+        }
+        return clean;
+    }
+
     public Long publishConfig(GalleryConfigDto request, long userId) {
         GalleryConfig old = galleryConfigRepository.findById(request.getId()).orElse(null);
         if (!isOwner(old, userId)) {

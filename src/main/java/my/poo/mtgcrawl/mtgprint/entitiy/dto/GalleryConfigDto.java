@@ -38,6 +38,10 @@ public class GalleryConfigDto {
     private String namePattern;
     private String nameReplacement;
 
+    private String hint;
+    // Sprachcode -> Hinweis; das Frontend zeigt den Eintrag der UI-Sprache, sonst hint
+    private Map<String, String> hintTranslations;
+
     private String method;
     private String requestFormat;
 
