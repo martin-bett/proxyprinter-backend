@@ -63,6 +63,17 @@ public class ImageFetchService {
         }
     }
 
+    public int failureCount() {
+        return failures.size();
+    }
+
+    /** Vergisst alle gemerkten Fehler (Admin: "Jetzt leeren"). */
+    public int clearFailures() {
+        int size = failures.size();
+        failures.clear();
+        return size;
+    }
+
     /** Letzter Fehler für diese URL, falls er noch nicht abgelaufen ist. */
     public Failure recentFailure(String url) {
         Failure failure = failures.get(url);

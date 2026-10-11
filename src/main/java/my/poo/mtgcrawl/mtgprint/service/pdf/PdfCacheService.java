@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Hält fertige PDFs eine Zeit lang (pdf.retention-days, Standard 7 Tage) auf der Platte,
+ * Hält fertige PDFs eine Zeit lang (pdf.retention-days, Standard 30 Tage) auf der Platte,
  * damit derselbe Request nicht neu gebaut werden muss und der Download wiederholt werden
  * kann. Danach werden sie sicher gelöscht, auch über Neustarts hinweg: Beim Start wird
  * der Index aus dem Ordner aufgebaut, und das Aufräumen prüft jede Datei im Ordner.
@@ -34,11 +34,11 @@ public class PdfCacheService {
     }
 
     private final Path cacheDir;
-    private final int retentionDays;
+    private volatile int retentionDays;
     private final Map<String, Long> timeStampMap = new ConcurrentHashMap<>();
 
     @Autowired
-    public PdfCacheService(@Value("${pdf.retention-days:7}") int retentionDays) {
+    public PdfCacheService(@Value("${pdf.retention-days:30}") int retentionDays) {
         this(Paths.get(PDF_CACHE_PATH), retentionDays);
     }
 
@@ -55,6 +55,15 @@ public class PdfCacheService {
 
     public int getRetentionDays() {
         return retentionDays;
+    }
+
+    /** Neue Aufbewahrungszeit (Admin-Einstellung), gilt sofort für alle PDFs. */
+    public void setRetentionDays(int retentionDays) {
+        this.retentionDays = Math.max(1, retentionDays);
+    }
+
+    public Path getCacheDir() {
+        return cacheDir;
     }
 
     public long getMaxAgeMs() {
@@ -159,6 +168,31 @@ public class PdfCacheService {
                 log.warn("Could not delete expired pdf file " + f.getName());
             }
         }
+    }
+
+    /** Löscht alle PDFs sofort (Admin: "Jetzt leeren"). */
+    public int clear() {
+        int deleted = 0;
+        for (String progressId : timeStampMap.keySet()) {
+            timeStampMap.remove(progressId);
+            try {
+                if (Files.deleteIfExists(pathFor(progressId))) {
+                    deleted++;
+                }
+            } catch (Exception e) {
+                log.warn("Could not delete cached pdf " + progressId + ": " + e.getMessage());
+            }
+        }
+        File[] files = cacheDir.toFile().listFiles((d, name) -> name.endsWith(SUFFIX));
+        if (files != null) {
+            for (File f : files) {
+                if (f.delete()) {
+                    deleted++;
+                }
+            }
+        }
+        log.info("Cleared " + deleted + " cached pdfs");
+        return deleted;
     }
 
     public int getCachedPdfCount() {

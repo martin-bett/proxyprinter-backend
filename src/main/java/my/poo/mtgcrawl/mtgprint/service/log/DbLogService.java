@@ -25,7 +25,7 @@ public class DbLogService {
     private final JdbcTemplate jdbcTemplate;
     private final boolean enabled;
     private final Level minLevel;
-    private final int retentionDays;
+    private volatile int retentionDays;
     private DbLogAppender appender;
 
     public DbLogService(JdbcTemplate jdbcTemplate,
@@ -60,6 +60,15 @@ public class DbLogService {
         context.getLogger(Logger.ROOT_LOGGER_NAME).detachAppender(appender);
         appender.stop();
         appender = null;
+    }
+
+    public int getRetentionDays() {
+        return retentionDays;
+    }
+
+    /** Neue Aufbewahrungszeit (Admin-Einstellung), gilt ab dem nächsten nächtlichen Aufräumen. */
+    public void setRetentionDays(int retentionDays) {
+        this.retentionDays = retentionDays;
     }
 
     @Scheduled(cron = "${log.db.cleanup-cron:0 30 3 * * *}")

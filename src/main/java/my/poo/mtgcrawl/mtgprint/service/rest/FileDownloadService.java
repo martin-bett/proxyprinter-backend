@@ -33,6 +33,25 @@ public class FileDownloadService {
         restTemplate = r;
     }
 
+    public static Path cacheDir() {
+        return Paths.get(IMG_CACHE_FOLDER);
+    }
+
+    /** Löscht alle zwischengespeicherten Bilder (Admin: "Jetzt leeren"); sie werden bei Bedarf neu geladen. */
+    public int clear() {
+        File[] files = new File(IMG_CACHE_FOLDER).listFiles(File::isFile);
+        int deleted = 0;
+        if (files != null) {
+            for (File f : files) {
+                if (f.delete()) {
+                    deleted++;
+                }
+            }
+        }
+        log.info("Cleared {} cached images", deleted);
+        return deleted;
+    }
+
     public String downloadFile(String url, String fileName) {
         if (fileName == null) return null;
     

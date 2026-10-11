@@ -39,6 +39,17 @@ public class BufferedImageCacheService {
         return null;
     }
 
+    public int size() {
+        return cache.size();
+    }
+
+    /** Leert den Speicher-Cache (Admin: "Jetzt leeren"), gibt die Anzahl der Bilder zurück. */
+    public int clear() {
+        int size = cache.size();
+        cache.clear();
+        return size;
+    }
+
     // Methode zum Entfernen von abgelaufenen Bildern
     private void removeExpiredEntries() {
         long now = System.currentTimeMillis();

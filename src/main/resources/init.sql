@@ -234,6 +234,14 @@ CREATE TABLE proxymaster.blocklist_request (
 );
 CREATE INDEX blocklist_request_host_idx ON proxymaster.blocklist_request (host);
 
+-- Vom Admin geänderte Einstellungen (sql/2026-10-11_app_setting.sql)
+CREATE TABLE proxymaster.app_setting (
+    setting_key varchar(100) PRIMARY KEY,
+    setting_value varchar(200) NOT NULL,
+    updated_at timestamp NOT NULL DEFAULT now(),
+    updated_by varchar(320)
+);
+
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
 VALUES(1, 'MTG'::proxymaster."api_category", 'https://aetherhub.com/', 'aetherhub', false, 'GET', NULL, 'https://aetherhub.com/Card/Search', 2, 'html', NULL, NULL, NULL, true, 'div#cards>div', 'div.item-hidden-text | innerText', NULL, 'img | attr:data-src', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, NULL);
