@@ -107,7 +107,7 @@ public class CacheAdminService {
         int running = pdfJobs.getActiveJobCount() + pdfJobs.getQueueSize();
         if (running > 0) {
             throw new AdminException(HttpStatus.CONFLICT, "admin.pdfJobsRunning",
-                    "PDFs are being generated right now, try again later.", Map.of("count", running));
+                    "PDFs are being generated right now, try again later.", Map.of("jobs", running));
         }
     }
 
