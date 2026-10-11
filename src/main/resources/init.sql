@@ -214,6 +214,14 @@ CREATE TABLE proxymaster.deck_stats (
     created int NOT NULL DEFAULT 0
 );
 
+-- Nutzungszähler pro Tag und Kennzahl (löst deck_stats ab, siehe sql/2026-10-11_usage_stats.sql)
+CREATE TABLE proxymaster.usage_stats (
+    day date NOT NULL,
+    metric varchar(40) NOT NULL,
+    count bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, metric)
+);
+
 -- Gesperrte Quellen (sql/2026-10-10_blocked_host.sql): Domain inkl. Subdomains oder IP/Netz
 CREATE TABLE proxymaster.blocked_host (
     id bigserial PRIMARY KEY,

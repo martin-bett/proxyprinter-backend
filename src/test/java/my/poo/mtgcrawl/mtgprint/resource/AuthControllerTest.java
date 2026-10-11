@@ -19,6 +19,7 @@ import my.poo.mtgcrawl.mtgprint.service.auth.AuthService;
 import my.poo.mtgcrawl.mtgprint.service.rest.ApiConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.DeckFinderConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.GalleryConfigService;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageTracker;
 
 class AuthControllerTest {
 
@@ -26,7 +27,7 @@ class AuthControllerTest {
 
     private final AuthService authService = mock(AuthService.class);
     private final AuthController controller = new AuthController(authService, mock(ApiConfigService.class),
-            mock(GalleryConfigService.class), mock(DeckFinderConfigService.class), "https://abc123.test.proxyprinter.eu");
+            mock(GalleryConfigService.class), mock(DeckFinderConfigService.class), mock(UsageTracker.class), "https://abc123.test.proxyprinter.eu");
 
     private static List<String> cookies(ResponseEntity<?> response) {
         List<String> values = response.getHeaders().get(HttpHeaders.SET_COOKIE);

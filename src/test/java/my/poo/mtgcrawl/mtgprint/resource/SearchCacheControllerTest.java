@@ -1,5 +1,6 @@
 package my.poo.mtgcrawl.mtgprint.resource;
 
+import static org.mockito.Mockito.mock;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -19,6 +20,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import my.poo.mtgcrawl.mtgprint.service.searchcache.SearchResultCacheService;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageTracker;
 
 class SearchCacheControllerTest {
 
@@ -37,7 +39,7 @@ class SearchCacheControllerTest {
                 ObjectMapper.class, boolean.class, Path.class, int.class, int.class);
         ctor.setAccessible(true);
         SearchResultCacheService cache = ctor.newInstance(new ObjectMapper(), enabled, dir, 7, 2048);
-        return MockMvcBuilders.standaloneSetup(new SearchCacheController(cache)).build();
+        return MockMvcBuilders.standaloneSetup(new SearchCacheController(cache, mock(UsageTracker.class))).build();
     }
 
     @Test

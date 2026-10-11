@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
@@ -24,14 +25,17 @@ import my.poo.mtgcrawl.mtgprint.service.admin.RuntimeSettingsService;
 import my.poo.mtgcrawl.mtgprint.service.admin.RuntimeSettingsService.SettingView;
 import my.poo.mtgcrawl.mtgprint.service.auth.AppUser;
 import my.poo.mtgcrawl.mtgprint.service.auth.AuthService;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageStatsRepository;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageStatsRepository.UsageDay;
 
 class AdminControllerTest {
 
     private final AuthService authService = mock(AuthService.class);
     private final RuntimeSettingsService settings = mock(RuntimeSettingsService.class);
     private final CacheAdminService caches = mock(CacheAdminService.class);
+    private final UsageStatsRepository usage = mock(UsageStatsRepository.class);
     private final MockMvc mvc = MockMvcBuilders
-            .standaloneSetup(new AdminController(new AdminAccess(authService, " Admin@Example.org , other@example.org"), settings, caches))
+            .standaloneSetup(new AdminController(new AdminAccess(authService, " Admin@Example.org , other@example.org"), settings, caches, usage))
             .setControllerAdvice(new ApiErrorHandler())
             .build();
 
@@ -40,6 +44,8 @@ class AdminControllerTest {
         when(authService.findUser("user")).thenReturn(Optional.of(new AppUser(2, "user@example.org", LocalDateTime.now())));
         when(settings.list()).thenReturn(List.of(new SettingView("pdf.retention-days", 30, 7, 1, 365, true)));
         when(caches.list()).thenReturn(List.of());
+        when(usage.recentDays(anyInt())).thenReturn(List.of(new UsageDay("2026-10-11", Map.of("pageViews", 12L))));
+        when(usage.totals()).thenReturn(Map.of("pageViews", 99L));
     }
 
     @Test
@@ -57,7 +63,11 @@ class AdminControllerTest {
         mvc.perform(get("/api/admin").cookie(new Cookie("pp_session", "admin")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.settings[0].key").value("pdf.retention-days"))
-                .andExpect(jsonPath("$.settings[0].defaultValue").value(7));
+                .andExpect(jsonPath("$.settings[0].defaultValue").value(7))
+                .andExpect(jsonPath("$.usage.days[0].day").value("2026-10-11"))
+                .andExpect(jsonPath("$.usage.days[0].counts.pageViews").value(12))
+                .andExpect(jsonPath("$.usage.totals.pageViews").value(99));
+        verify(usage).recentDays(30);
     }
 
     @Test

@@ -23,6 +23,8 @@ import my.poo.mtgcrawl.mtgprint.service.deckfinder.DeckFinderException;
 import my.poo.mtgcrawl.mtgprint.service.deckfinder.DeckFinderFetchService;
 import my.poo.mtgcrawl.mtgprint.service.deckfinder.DeckFinderFetchService.DeckFinderResponse;
 import my.poo.mtgcrawl.mtgprint.service.rest.DeckFinderConfigService;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageMetric;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageTracker;
 
 @RestController
 @RequestMapping("/api/deckfinder")
@@ -32,6 +34,7 @@ public class DeckFinderConfigController {
     private final DeckFinderConfigService service;
     private final DeckFinderFetchService fetchService;
     private final CurrentUser currentUser;
+    private final UsageTracker usage;
 
     @GetMapping
     public List<DeckFinderConfigDto> getAllConfigs(HttpServletRequest httpRequest) {
@@ -78,7 +81,9 @@ public class DeckFinderConfigController {
     public ResponseEntity<String> fetchDeck(@PathVariable Long configId, @RequestParam("input") String input,
             HttpServletRequest httpRequest) {
         DeckFinderConfig config = visibleConfig(configId, httpRequest);
-        return toResponse(fetchService.fetchDeck(config, input));
+        ResponseEntity<String> response = toResponse(fetchService.fetchDeck(config, input));
+        usage.count(UsageMetric.DECK_IMPORTS);
+        return response;
     }
 
     /** Decks per Name suchen; Antwort der Seite unverändert (JSON). */

@@ -18,8 +18,9 @@ import my.poo.mtgcrawl.mtgprint.service.admin.AdminException;
 import my.poo.mtgcrawl.mtgprint.service.admin.CacheAdminService;
 import my.poo.mtgcrawl.mtgprint.service.admin.RuntimeSettingsService;
 import my.poo.mtgcrawl.mtgprint.service.admin.RuntimeSettingsService.SettingView;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageStatsRepository;
 
-/** Admin-Seite: Laufzeiten der Caches einstellen und Caches leeren. Nur für Konten aus admin.emails. */
+/** Admin-Seite: Nutzungszähler, Laufzeiten der Caches einstellen und Caches leeren. Nur für Konten aus admin.emails. */
 @RestController
 @RequestMapping("/api/admin")
 public class AdminController {
@@ -27,18 +28,25 @@ public class AdminController {
     private final AdminAccess access;
     private final RuntimeSettingsService settings;
     private final CacheAdminService caches;
+    private final UsageStatsRepository usage;
 
-    public AdminController(AdminAccess access, RuntimeSettingsService settings, CacheAdminService caches) {
+    /** So viele Tage zeigt die Admin-Seite in der Nutzungstabelle */
+    static final int USAGE_DAYS = 30;
+
+    public AdminController(AdminAccess access, RuntimeSettingsService settings, CacheAdminService caches,
+            UsageStatsRepository usage) {
         this.access = access;
         this.settings = settings;
         this.caches = caches;
+        this.usage = usage;
     }
 
-    /** Einstellungen und Cache-Übersicht. 401 ohne Login, 403 für andere Konten. */
+    /** Einstellungen, Cache-Übersicht und Nutzung (letzte {@link #USAGE_DAYS} Tage). 401 ohne Login, 403 für andere Konten. */
     @GetMapping
     public Map<String, Object> overview(HttpServletRequest request) {
         access.require(request);
-        return Map.of("settings", settings.list(), "caches", caches.list());
+        return Map.of("settings", settings.list(), "caches", caches.list(),
+                "usage", Map.of("days", usage.recentDays(USAGE_DAYS), "totals", usage.totals()));
     }
 
     /** Body: {"value": 30}. */
