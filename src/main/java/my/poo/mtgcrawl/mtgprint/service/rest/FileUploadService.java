@@ -35,7 +35,7 @@ public class FileUploadService {
     private final HashService hashService;
     private final long maxAgeMs;
 
-    public FileUploadService(HashService hashService, @Value("${upload.retention-days:7}") int retentionDays) {
+    public FileUploadService(HashService hashService, @Value("${upload.retention-days:30}") int retentionDays) {
         this.hashService = hashService;
         this.maxAgeMs = Math.max(1, retentionDays) * DAY_MS;
         try {

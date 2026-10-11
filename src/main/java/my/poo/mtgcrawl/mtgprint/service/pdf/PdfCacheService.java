@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 /**
- * Hält fertige PDFs eine Zeit lang (pdf.retention-days, Standard 7 Tage) auf der Platte,
+ * Hält fertige PDFs eine Zeit lang (pdf.retention-days, Standard 30 Tage) auf der Platte,
  * damit derselbe Request nicht neu gebaut werden muss und der Download wiederholt werden
  * kann. Danach werden sie sicher gelöscht, auch über Neustarts hinweg: Beim Start wird
  * der Index aus dem Ordner aufgebaut, und das Aufräumen prüft jede Datei im Ordner.
@@ -38,7 +38,7 @@ public class PdfCacheService {
     private final Map<String, Long> timeStampMap = new ConcurrentHashMap<>();
 
     @Autowired
-    public PdfCacheService(@Value("${pdf.retention-days:7}") int retentionDays) {
+    public PdfCacheService(@Value("${pdf.retention-days:30}") int retentionDays) {
         this(Paths.get(PDF_CACHE_PATH), retentionDays);
     }
 
