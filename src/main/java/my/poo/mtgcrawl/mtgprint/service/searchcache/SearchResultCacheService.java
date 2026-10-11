@@ -58,7 +58,7 @@ public class SearchResultCacheService {
             ObjectMapper objectMapper,
             @Value("${searchcache.enabled:true}") boolean enabled,
             @Value("${searchcache.dir:search-cache}") String dir,
-            @Value("${searchcache.retention-days:7}") int retentionDays,
+            @Value("${searchcache.retention-days:14}") int retentionDays,
             @Value("${searchcache.max-entry-kb:2048}") int maxEntryKb) {
         this(objectMapper, enabled, Paths.get(dir), retentionDays, maxEntryKb);
     }
