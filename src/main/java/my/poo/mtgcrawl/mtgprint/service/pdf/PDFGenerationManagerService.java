@@ -175,6 +175,11 @@ public class PDFGenerationManagerService {
         return maxConcurrent;
     }
 
+    /** Vergisst alle fertigen Jobs, z. B. nachdem der Admin die PDFs gelöscht hat. */
+    public void forgetFinishedJobs() {
+        allJobs.values().removeIf(job -> job.status == JobStatus.FINISHED);
+    }
+
     /** Fertige Jobs werden nach Ablauf der Cache-Zeit vergessen. */
     @Scheduled(fixedRate = 60 * 60 * 1000L)
     public void cleanUpJobs() {

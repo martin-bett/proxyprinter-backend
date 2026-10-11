@@ -33,6 +33,8 @@ services:
       GALLERY_CREDENTIALS_REDDIT_AUTHORIZATION: ${GALLERY_CREDENTIALS_REDDIT_AUTHORIZATION:-}
       # Gemeinsamer Such-Cache; false = keine Dateien lesen/schreiben (z. B. für PR-Testumgebungen)
       SEARCHCACHE_ENABLED: ${SEARCHCACHE_ENABLED:-true}
+      # Admin-Seite /admin: E-Mail-Adressen der Admin-Konten, kommagetrennt (in .env setzen)
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
       JAVA_TOOL_OPTIONS: ${BACKEND_JAVA_OPTS:--Xmx1g}
     volumes:
       - backend-img:/app/img

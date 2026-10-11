@@ -33,7 +33,7 @@ public class FileUploadService {
     public static final String IMG_TEMP_FOLDER = "img/temp/";
     private static final long DAY_MS = 24 * 60 * 60 * 1000L;
     private final HashService hashService;
-    private final long maxAgeMs;
+    private volatile long maxAgeMs;
 
     public FileUploadService(HashService hashService, @Value("${upload.retention-days:30}") int retentionDays) {
         this.hashService = hashService;
@@ -43,6 +43,30 @@ public class FileUploadService {
         } catch (IOException e) {
             log.error("Konnte Upload-Ordner {} nicht anlegen", IMG_TEMP_FOLDER, e);
         }
+    }
+
+    public int getRetentionDays() {
+        return (int) (maxAgeMs / DAY_MS);
+    }
+
+    /** Neue Aufbewahrungszeit (Admin-Einstellung), gilt ab dem nächsten stündlichen Aufräumen. */
+    public void setRetentionDays(int retentionDays) {
+        this.maxAgeMs = Math.max(1, retentionDays) * DAY_MS;
+    }
+
+    /** Löscht alle hochgeladenen Bilder sofort (Admin: "Jetzt leeren"). Snapshots, die sie nutzen, verlieren sie. */
+    public int clear() {
+        File[] files = new File(IMG_TEMP_FOLDER).listFiles(File::isFile);
+        int deleted = 0;
+        if (files != null) {
+            for (File f : files) {
+                if (f.delete()) {
+                    deleted++;
+                }
+            }
+        }
+        log.info("Cleared {} uploaded images", deleted);
+        return deleted;
     }
 
     @Scheduled(fixedRate = 1000 * 60 * 60)

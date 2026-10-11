@@ -48,8 +48,8 @@ public class SearchResultCacheService {
     }
 
     private final Path cacheDir;
-    private final int retentionDays;
-    private final long maxEntryBytes;
+    private volatile int retentionDays;
+    private volatile long maxEntryBytes;
     private final boolean enabled;
     private final ObjectMapper objectMapper;
 
@@ -84,6 +84,23 @@ public class SearchResultCacheService {
 
     public int getRetentionDays() {
         return retentionDays;
+    }
+
+    /** Neue Laufzeit (Admin-Einstellung), gilt sofort für Lesen und das nächste Aufräumen. */
+    public void setRetentionDays(int retentionDays) {
+        this.retentionDays = Math.max(1, retentionDays);
+    }
+
+    public int getMaxEntryKb() {
+        return (int) (maxEntryBytes / 1024);
+    }
+
+    public void setMaxEntryKb(int maxEntryKb) {
+        this.maxEntryBytes = Math.max(1, maxEntryKb) * 1024L;
+    }
+
+    public Path getCacheDir() {
+        return cacheDir;
     }
 
     long getMaxAgeMs() {
@@ -205,10 +222,18 @@ public class SearchResultCacheService {
     /** Löscht abgelaufene Einträge, liegengebliebene Temp-Dateien und leere Ordner. */
     @Scheduled(cron = "${searchcache.cleanup.cron:0 45 3 * * *}")
     public int cleanUp() {
+        return deleteOlderThan(System.currentTimeMillis() - (enabled ? getMaxAgeMs() : 0));
+    }
+
+    /** Löscht alle Einträge sofort (Admin: "Jetzt leeren"). */
+    public int clear() {
+        return deleteOlderThan(Long.MAX_VALUE);
+    }
+
+    private int deleteOlderThan(long cutoff) {
         if (!Files.isDirectory(cacheDir)) {
             return 0;
         }
-        long cutoff = System.currentTimeMillis() - (enabled ? getMaxAgeMs() : 0);
         int deleted = 0;
         try (Stream<Path> files = Files.walk(cacheDir)) {
             for (Path file : (Iterable<Path>) files.filter(Files::isRegularFile)::iterator) {
@@ -229,7 +254,8 @@ public class SearchResultCacheService {
         }
         deleteEmptyDirs(cacheDir, true);
         if (deleted > 0) {
-            log.info("Deleted {} search cache entries older than {} days", deleted, retentionDays);
+            log.info("Deleted {} search cache entries ({})", deleted,
+                    cutoff == Long.MAX_VALUE ? "cleared" : "older than " + retentionDays + " days");
         }
         return deleted;
     }

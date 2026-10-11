@@ -34,7 +34,7 @@ public class PdfCacheService {
     }
 
     private final Path cacheDir;
-    private final int retentionDays;
+    private volatile int retentionDays;
     private final Map<String, Long> timeStampMap = new ConcurrentHashMap<>();
 
     @Autowired
@@ -55,6 +55,15 @@ public class PdfCacheService {
 
     public int getRetentionDays() {
         return retentionDays;
+    }
+
+    /** Neue Aufbewahrungszeit (Admin-Einstellung), gilt sofort für alle PDFs. */
+    public void setRetentionDays(int retentionDays) {
+        this.retentionDays = Math.max(1, retentionDays);
+    }
+
+    public Path getCacheDir() {
+        return cacheDir;
     }
 
     public long getMaxAgeMs() {
@@ -159,6 +168,31 @@ public class PdfCacheService {
                 log.warn("Could not delete expired pdf file " + f.getName());
             }
         }
+    }
+
+    /** Löscht alle PDFs sofort (Admin: "Jetzt leeren"). */
+    public int clear() {
+        int deleted = 0;
+        for (String progressId : timeStampMap.keySet()) {
+            timeStampMap.remove(progressId);
+            try {
+                if (Files.deleteIfExists(pathFor(progressId))) {
+                    deleted++;
+                }
+            } catch (Exception e) {
+                log.warn("Could not delete cached pdf " + progressId + ": " + e.getMessage());
+            }
+        }
+        File[] files = cacheDir.toFile().listFiles((d, name) -> name.endsWith(SUFFIX));
+        if (files != null) {
+            for (File f : files) {
+                if (f.delete()) {
+                    deleted++;
+                }
+            }
+        }
+        log.info("Cleared " + deleted + " cached pdfs");
+        return deleted;
     }
 
     public int getCachedPdfCount() {

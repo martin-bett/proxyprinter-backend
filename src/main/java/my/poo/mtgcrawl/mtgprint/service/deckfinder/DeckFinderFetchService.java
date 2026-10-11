@@ -49,6 +49,21 @@ public class DeckFinderFetchService {
         }
     };
 
+    public int cacheSize() {
+        synchronized (cache) {
+            return cache.size();
+        }
+    }
+
+    /** Leert den Ergebnis-Cache (Admin: "Jetzt leeren"). */
+    public int clearCache() {
+        synchronized (cache) {
+            int size = cache.size();
+            cache.clear();
+            return size;
+        }
+    }
+
     @Autowired
     public DeckFinderFetchService(DeckFinderHttp http) {
         this(http, Clock.systemUTC());
