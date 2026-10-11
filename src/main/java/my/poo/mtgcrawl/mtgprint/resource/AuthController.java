@@ -24,6 +24,8 @@ import my.poo.mtgcrawl.mtgprint.service.auth.AuthService;
 import my.poo.mtgcrawl.mtgprint.service.rest.ApiConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.DeckFinderConfigService;
 import my.poo.mtgcrawl.mtgprint.service.rest.GalleryConfigService;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageMetric;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageTracker;
 
 /** Login ohne Passwort (Link oder Code per Mail), Sitzung per HttpOnly-Cookie. */
 @RestController
@@ -39,9 +41,12 @@ public class AuthController {
     private final GalleryConfigService galleryConfigService;
     private final DeckFinderConfigService deckFinderConfigService;
     private final boolean secureCookie;
+    private final UsageTracker usage;
 
     public AuthController(AuthService authService, ApiConfigService apiConfigService, GalleryConfigService galleryConfigService,
-            DeckFinderConfigService deckFinderConfigService, @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl) {
+            DeckFinderConfigService deckFinderConfigService, UsageTracker usage,
+            @Value("${app.public-url:https://proxyprinter.eu}") String publicUrl) {
+        this.usage = usage;
         this.authService = authService;
         this.apiConfigService = apiConfigService;
         this.galleryConfigService = galleryConfigService;
@@ -121,6 +126,7 @@ public class AuthController {
         if (session.isEmpty()) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+        usage.count(UsageMetric.LOGINS);
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("loginEnabled", true);
         result.put("email", authService.findUser(session.get()).map(AppUser::email).orElse(null));

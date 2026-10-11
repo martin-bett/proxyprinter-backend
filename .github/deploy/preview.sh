@@ -151,7 +151,7 @@ EOF
       # Admin-Seite /admin: in Testumgebungen ist das Testkonto Admin (die Seiten sind ohnehin per Passwort geschützt)
       ADMIN_EMAILS: test@proxyprinter.eu
       PDF_MAX_SIZE_MB: "100"
-      JAVA_TOOL_OPTIONS: -Xmx512m
+      JAVA_TOOL_OPTIONS: -Xmx2g
       # Übersetzung der Galerie-Hinweise (optional): Key steht in der .env der Testumgebungen, ohne Key keine Übersetzung
       DEEPL_API_KEY: \${DEEPL_API_KEY:-}
 EOF

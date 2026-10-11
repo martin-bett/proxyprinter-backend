@@ -17,6 +17,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import lombok.AllArgsConstructor;
 import my.poo.mtgcrawl.mtgprint.service.searchcache.SearchResultCacheService;
 import my.poo.mtgcrawl.mtgprint.service.searchcache.SearchResultCacheService.CachedSearch;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageMetric;
+import my.poo.mtgcrawl.mtgprint.service.stats.UsageTracker;
 
 /**
  * Gemeinsamer Such-Cache für alle Frontends. Das Frontend fragt vor einer Suche hier nach
@@ -47,6 +49,7 @@ public class SearchCacheController {
     }
 
     private final SearchResultCacheService cache;
+    private final UsageTracker usage;
 
     @GetMapping("/info")
     public Map<String, Object> info() {
@@ -60,6 +63,7 @@ public class SearchCacheController {
         if (keys.size() > MAX_LOOKUP) {
             return ResponseEntity.badRequest().build();
         }
+        usage.count(UsageMetric.SEARCH_TERMS, keys.size());
         List<CachedSearch> hits = keys.stream()
                 .filter(Objects::nonNull)
                 .map(key -> cache.get(key.config(), key.configHash(), key.term()).orElse(null))
