@@ -52,7 +52,6 @@ public class SystemStatusService {
         result.put("startedAt", runtime.getStartTime());
         result.put("uptimeMs", runtime.getUptime());
         result.put("javaVersion", Runtime.version().toString());
-        result.put("processors", Runtime.getRuntime().availableProcessors());
         result.put("systemLoad", ManagementFactory.getOperatingSystemMXBean().getSystemLoadAverage());
         result.put("heapUsed", heap.getUsed());
         result.put("heapCommitted", heap.getCommitted());
