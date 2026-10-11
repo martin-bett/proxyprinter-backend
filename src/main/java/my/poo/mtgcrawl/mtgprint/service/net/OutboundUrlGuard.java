@@ -7,12 +7,14 @@ import java.net.URI;
 import java.net.UnknownHostException;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 /**
  * Prüft Ziele von Abrufen, die das Backend im Auftrag eines Besuchers macht (Proxy, Probe, Bilder, PDF-Bilder):
- * nur http(s) und keine Adressen im eigenen Netz (localhost, Docker-Netz, private Netze, Link-Local, Cloud-Metadaten).
+ * nur http(s), keine Adressen im eigenen Netz (localhost, Docker-Netz, private Netze, Link-Local, Cloud-Metadaten)
+ * und keine Hosts der HostBlocklist.
  * Jede Weiterleitung wird erneut geprüft (GuardedHttp, GuardedRequestFactory).
  * Die JVM cached DNS-Antworten (30 s), Prüfung und Verbindung sehen also dieselbe Adresse.
  */
@@ -20,9 +22,16 @@ import org.springframework.stereotype.Component;
 public class OutboundUrlGuard {
 
     private final boolean allowInternal;
+    private final HostBlocklist blocklist;
 
-    public OutboundUrlGuard(@Value("${outbound.allow-internal-addresses:false}") boolean allowInternal) {
+    public OutboundUrlGuard(boolean allowInternal) {
+        this(allowInternal, HostBlocklist.NONE);
+    }
+
+    @Autowired
+    public OutboundUrlGuard(@Value("${outbound.allow-internal-addresses:false}") boolean allowInternal, HostBlocklist blocklist) {
         this.allowInternal = allowInternal;
+        this.blocklist = blocklist;
     }
 
     public URI check(String url) {
@@ -47,6 +56,8 @@ public class OutboundUrlGuard {
         if (host == null || host.isBlank()) {
             throw new BlockedUrlException("proxy.invalidUrl", "Invalid URL: " + uri, Map.of("url", uri.toString()));
         }
+        // Auch bei erlaubten internen Adressen: gesperrte Betreiber bleiben gesperrt
+        blocklist.check(uri);
         if (allowInternal) {
             return uri;
         }

@@ -14,10 +14,7 @@ public class CorsConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowCredentials(true);
-        config.addAllowedOrigin("http://localhost:8081"); // Erlaubt Anfragen von Ihrem React-Frontend
-        config.addAllowedOrigin("http://46.38.245.243:8081"); // Erlaubt Anfragen von Ihrem React-Frontend
-        config.addAllowedOrigin("http://proxyprinter.eu:8081"); // Erlaubt Anfragen von Ihrem React-Frontend
-        config.addAllowedOrigin("http://localhost:3000"); // Erlaubt Anfragen von Ihrem React-Frontend
+        config.addAllowedOrigin("http://localhost:3000"); // lokaler Frontend-Dev-Server
         config.addAllowedOrigin("https://proxyprinter.eu"); // Live-Seite (POST mit Origin-Header, sonst 403)
         config.addAllowedOrigin("https://www.proxyprinter.eu");
         config.addAllowedOriginPattern("https://test.proxyprinter.eu"); // Testumgebungen (deploy/PREVIEW.md)

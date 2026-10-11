@@ -38,12 +38,14 @@ public interface GalleryConfigRepository extends JpaRepository<GalleryConfig, Lo
                     category, official_website, name,  method, request_format, base_url, 
                     data_format, pagination_field, use_backend_proxy, data_list_field, name_field,  image_url_field,
                      ip_address, user_id, published, default_language,
-                     link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement
+                     link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement,
+                     hint, hint_translations
                 )
                 SELECT category, official_website, name || '_copy',  method, request_format, base_url,
                         data_format, pagination_field, use_backend_proxy, data_list_field, name_field,  image_url_field,
                         :ipAddress, :userId, FALSE, default_language,
-                        link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement
+                        link_pattern, follow_input_redirects, credential, image_url_pattern, image_url_replacement, name_pattern, name_replacement,
+                        hint, hint_translations
                 FROM proxymaster.gallery_config
                 WHERE id = :id
                 RETURNING id

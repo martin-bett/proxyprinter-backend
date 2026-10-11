@@ -146,8 +146,12 @@ EOF
       SPRING_DATASOURCE_PASSWORD: \${DB_PASSWORD}
       APP_PUBLIC_URL: $URL
       AUTH_DEV_SHOW_CODE: "true"
+      # Jeder Besuch ohne Sitzung ist als dieses Testkonto angemeldet (nach Logout aus, bis zum nächsten Login)
+      AUTH_DEV_AUTO_LOGIN: test@proxyprinter.eu
       PDF_MAX_SIZE_MB: "100"
       JAVA_TOOL_OPTIONS: -Xmx512m
+      # Übersetzung der Galerie-Hinweise (optional): Key steht in der .env der Testumgebungen, ohne Key keine Übersetzung
+      DEEPL_API_KEY: \${DEEPL_API_KEY:-}
 EOF
       # Gemeinsamer Such-Cache: nur im develop-Backend an, auf eigenem Volume (überlebt Neuausrollen, getrennt von der Produktion).
       # PR-Backends: Such-Cache aus, speicherintensive Funktionen kurz halten.

@@ -11,6 +11,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.dto.DeckFinderConfigDto;
 import my.poo.mtgcrawl.mtgprint.enums.ApiCategory;
 import my.poo.mtgcrawl.mtgprint.repository.DeckFinderConfigRepository;
 import my.poo.mtgcrawl.mtgprint.service.mapper.DeckFinderConfigMapper;
+import my.poo.mtgcrawl.mtgprint.service.net.HostBlocklist;
 
 @Service
 @Transactional
@@ -18,15 +19,25 @@ import my.poo.mtgcrawl.mtgprint.service.mapper.DeckFinderConfigMapper;
 public class DeckFinderConfigService {
     private DeckFinderConfigRepository repository;
     private DeckFinderConfigMapper mapper;
+    private HostBlocklist blocklist;
 
-    public List<DeckFinderConfigDto> findAllVisible(Long userId) {
-        return repository.findAllVisible(userId).stream().map(mapper::toDTO).toList();
+    /** Zeigt eine URL der Config auf einen gesperrten Betreiber? Solche Configs werden nicht ausgeliefert. */
+    public boolean isBlocked(DeckFinderConfig config) {
+        return blocklist.blockedHostIn(urlsOf(config)).isPresent();
     }
 
-    /** Config nur benutzen, wenn sie veröffentlicht ist oder dem Konto gehört. */
+    private static String[] urlsOf(DeckFinderConfig config) {
+        return new String[] { config.getFetchUrl(), config.getSearchUrl(), config.getOfficialWebsite() };
+    }
+
+    public List<DeckFinderConfigDto> findAllVisible(Long userId) {
+        return repository.findAllVisible(userId).stream().filter(c -> !isBlocked(c)).map(mapper::toDTO).toList();
+    }
+
+    /** Config nur benutzen, wenn sie veröffentlicht ist oder dem Konto gehört und nicht gesperrt ist. */
     public DeckFinderConfig findVisible(Long id, Long userId) {
         DeckFinderConfig config = repository.findById(id).orElse(null);
-        if (config == null || !(config.isPublished() || isOwner(config, userId))) {
+        if (config == null || !(config.isPublished() || isOwner(config, userId)) || isBlocked(config)) {
             return null;
         }
         return config;
@@ -37,9 +48,11 @@ public class DeckFinderConfigService {
     }
 
     public Long copyConfig(DeckFinderConfigDto request, long userId, String ip) {
-        if (findVisible(request.getId(), userId) == null) {
+        DeckFinderConfig source = repository.findById(request.getId()).orElse(null);
+        if (source == null || !(source.isPublished() || isOwner(source, userId))) {
             return null;
         }
+        blocklist.checkConfigUrls(urlsOf(source));
         List<Long> ids = repository.copyDeckFinderConfig(request.getId(), ip, userId);
         return ids != null && !ids.isEmpty() ? ids.get(0) : null;
     }
@@ -66,6 +79,7 @@ public class DeckFinderConfigService {
             return null;
         }
         DeckFinderConfig config = mapper.toEntity(request);
+        blocklist.checkConfigUrls(urlsOf(config));
         config.setVisitorIdentifier(old.getVisitorIdentifier());
         config.setUserId(old.getUserId());
         // Veröffentlichen geht nur über publish
@@ -77,6 +91,9 @@ public class DeckFinderConfigService {
         DeckFinderConfig old = repository.findById(request.getId()).orElse(null);
         if (old == null || !isOwner(old, userId)) {
             return null;
+        }
+        if (request.isPublished()) {
+            blocklist.checkConfigUrls(urlsOf(old));
         }
         old.setPublished(request.isPublished());
         return repository.save(old).getId();
