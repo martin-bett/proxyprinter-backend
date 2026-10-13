@@ -22,6 +22,7 @@ import my.poo.mtgcrawl.mtgprint.entitiy.dto.CropSettingsDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ImageDto;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.PdfProperties;
 import my.poo.mtgcrawl.mtgprint.entitiy.dto.ProgressDto;
+import my.poo.mtgcrawl.mtgprint.entitiy.dto.RegistrationMarkStyle;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -88,12 +89,30 @@ public class DocumentGenerator {
             float cardWidth = (float) (properties.isCardsLandscape() ? properties.getHeight() : properties.getWidth()) * MM_TO_PT;
             float cardHeight = (float) (properties.isCardsLandscape() ? properties.getWidth() : properties.getHeight()) * MM_TO_PT;
 
-            int cardsPerRow = cardsThatFit(pageWidth, cardWidth, hMargin);
-            int cardsPerColumn = cardsThatFit(pageHeight, cardHeight, vMargin);
-
-            // Raster mittig auf der Seite, damit 3 x 3 echte Karten (63,5 mm) auf A4 passen
-            float startX = centeredOffset(pageWidth, cardsPerRow, cardWidth, hMargin);
-            float startY = pageHeight - centeredOffset(pageHeight, cardsPerColumn, cardHeight, vMargin) - cardHeight;
+            RegistrationMarkStyle marks = properties.getRegistrationMarks();
+            int cardsPerRow;
+            int cardsPerColumn;
+            float startX;
+            float topOffset;
+            float markLength = 0;
+            if (marks != null) {
+                // Passmarken brauchen freie Ecken, das Raster rückt ein
+                RegistrationMarks.Grid grid = RegistrationMarks.grid(pageWidth, pageHeight, cardWidth, cardHeight, hMargin, vMargin);
+                cardsPerRow = grid.cols();
+                cardsPerColumn = grid.rows();
+                startX = grid.left();
+                topOffset = grid.top();
+                markLength = grid.markLengthMm();
+            } else {
+                cardsPerRow = cardsThatFit(pageWidth, cardWidth, hMargin);
+                cardsPerColumn = cardsThatFit(pageHeight, cardHeight, vMargin);
+                // Raster mittig auf der Seite, damit 3 x 3 echte Karten (63,5 mm) auf A4 passen
+                startX = centeredOffset(pageWidth, cardsPerRow, cardWidth, hMargin);
+                topOffset = centeredOffset(pageHeight, cardsPerColumn, cardHeight, vMargin);
+            }
+            float startY = pageHeight - topOffset - cardHeight;
+            // Schnittlinien liefen durch die Passmarken
+            boolean cutlines = properties.isCutlines() && marks == null;
 
             PDPage page = new PDPage(pageSize);
             document.addPage(page);
@@ -113,9 +132,12 @@ public class DocumentGenerator {
 
             for (ImageDto imagePath : imagePaths) {
                 if (cardCount >= cardsPerRow * cardsPerColumn) {
-                    if (properties.isCutlines()) {
+                    if (cutlines) {
                         drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight,
                                 properties.getCutlineColor(), properties.getCutlineThickness());
+                    }
+                    if (marks != null) {
+                        RegistrationMarks.draw(contentStream, marks, pageWidth, pageHeight, markLength);
                     }
                     contentStream.close();
                     page = new PDPage(pageSize);
@@ -169,9 +191,12 @@ public class DocumentGenerator {
                 progress.accept(dto);
             }
 
-            if (properties.isCutlines()) {
+            if (cutlines) {
                 drawGridLines(contentStream, verticalLines, horizontalLines, gridMargin, pageWidth, pageHeight,
                         properties.getCutlineColor(), properties.getCutlineThickness());
+            }
+            if (marks != null) {
+                RegistrationMarks.draw(contentStream, marks, pageWidth, pageHeight, markLength);
             }
             contentStream.close();
 
