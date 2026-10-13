@@ -32,4 +32,11 @@ public class PdfProperties {
     /** Karten quer aufs Blatt legen (um 90° gedreht); width/height bleiben die Maße der aufrechten Karte. */
     @JsonInclude(JsonInclude.Include.NON_DEFAULT)
     private boolean cardsLandscape;
+    /**
+     * Passmarken für Schneideplotter (Print and Cut); null = keine. Mit Passmarken bleiben die Ecken frei,
+     * das Raster rückt dafür ein und Schnittlinien entfallen (sie würden durch die Marken laufen).
+     * NON_NULL, damit der Request-Hash (PDF-Cache) ohne Passmarken gleich bleibt.
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private RegistrationMarkStyle registrationMarks;
 }
