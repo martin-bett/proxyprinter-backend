@@ -24,7 +24,7 @@ public class StatsService {
     private final LongSupplier sharedSearches;
     private final LongSupplier tempImages;
     private final LongSupplier cachedPdfs;
-    private final DeckStatsRepository deckStats;
+    private final UsageStatsRepository usage;
     private final LongSupplier clock;
 
     private long fileCountsAt = Long.MIN_VALUE;
@@ -33,17 +33,17 @@ public class StatsService {
 
     @Autowired
     public StatsService(SearchResultCacheService searchCache, FileUploadService uploads, PdfCacheService pdfCache,
-            DeckStatsRepository deckStats) {
-        this(searchCache::countEntries, uploads::countTempFiles, pdfCache::getCachedPdfCount, deckStats,
+            UsageStatsRepository usage) {
+        this(searchCache::countEntries, uploads::countTempFiles, pdfCache::getCachedPdfCount, usage,
                 System::currentTimeMillis);
     }
 
     StatsService(LongSupplier sharedSearches, LongSupplier tempImages, LongSupplier cachedPdfs,
-            DeckStatsRepository deckStats, LongSupplier clock) {
+            UsageStatsRepository usage, LongSupplier clock) {
         this.sharedSearches = sharedSearches;
         this.tempImages = tempImages;
         this.cachedPdfs = cachedPdfs;
-        this.deckStats = deckStats;
+        this.usage = usage;
         this.clock = clock;
     }
 
@@ -60,8 +60,8 @@ public class StatsService {
             result.put("tempImages", tempImageCount);
         }
         result.put("cachedPdfs", cachedPdfs.getAsLong());
-        result.put("decksToday", deckStats.createdToday());
-        result.put("decksTotal", deckStats.createdTotal());
+        result.put("decksToday", usage.today(UsageMetric.DECKS));
+        result.put("decksTotal", usage.total(UsageMetric.DECKS));
         return result;
     }
 }

@@ -17,9 +17,9 @@ class StatsServiceTest {
         AtomicLong now = new AtomicLong(1_000_000);
         AtomicLong searches = new AtomicLong(15152);
         AtomicLong images = new AtomicLong(1241);
-        DeckStatsRepository decks = mock(DeckStatsRepository.class);
-        when(decks.createdToday()).thenReturn(3L, 4L);
-        when(decks.createdTotal()).thenReturn(30L, 31L);
+        UsageStatsRepository decks = mock(UsageStatsRepository.class);
+        when(decks.today(UsageMetric.DECKS)).thenReturn(3L, 4L);
+        when(decks.total(UsageMetric.DECKS)).thenReturn(30L, 31L);
         StatsService service = new StatsService(searches::get, images::get, () -> 5, decks, now::get);
 
         Map<String, Long> first = service.stats();

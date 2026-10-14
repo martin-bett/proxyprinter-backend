@@ -108,4 +108,21 @@ class SearchResultCacheServiceTest {
         assertFalse(cache.put("12", "abc", "Shock", result("Shock")));
         assertTrue(cache.get("12", "abc", "Shock").isEmpty());
     }
+
+    @Test
+    void clearDeletesEverythingAndNewRetentionAppliesAtOnce() throws Exception {
+        SearchResultCacheService cache = cache(7);
+        cache.put("12", "abc", "Lightning Bolt", result("Lightning Bolt"));
+        cache.put("7", "abc", "Counterspell", result("Counterspell"));
+        Path file = cache.pathFor("12", "abc", "Lightning Bolt");
+        Files.setLastModifiedTime(file, java.nio.file.attribute.FileTime.fromMillis(System.currentTimeMillis() - 10 * DAY_MS));
+
+        cache.setRetentionDays(30);
+        assertEquals(0, cache.cleanUp());
+        assertEquals(30, cache.getRetentionDays());
+
+        assertEquals(2, cache.clear());
+        assertEquals(0, cache.countEntries());
+        assertTrue(cache.get("7", "abc", "Counterspell").isEmpty());
+    }
 }

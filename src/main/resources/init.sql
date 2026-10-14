@@ -214,6 +214,14 @@ CREATE TABLE proxymaster.deck_stats (
     created int NOT NULL DEFAULT 0
 );
 
+-- Nutzungszähler pro Tag und Kennzahl (löst deck_stats ab, siehe sql/2026-10-11_usage_stats.sql)
+CREATE TABLE proxymaster.usage_stats (
+    day date NOT NULL,
+    metric varchar(40) NOT NULL,
+    count bigint NOT NULL DEFAULT 0,
+    PRIMARY KEY (day, metric)
+);
+
 -- Gesperrte Quellen (sql/2026-10-10_blocked_host.sql): Domain inkl. Subdomains oder IP/Netz
 CREATE TABLE proxymaster.blocked_host (
     id bigserial PRIMARY KEY,
@@ -233,6 +241,14 @@ CREATE TABLE proxymaster.blocklist_request (
     expires_at timestamp NOT NULL
 );
 CREATE INDEX blocklist_request_host_idx ON proxymaster.blocklist_request (host);
+
+-- Vom Admin geänderte Einstellungen (sql/2026-10-11_app_setting.sql)
+CREATE TABLE proxymaster.app_setting (
+    setting_key varchar(100) PRIMARY KEY,
+    setting_value varchar(200) NOT NULL,
+    updated_at timestamp NOT NULL DEFAULT now(),
+    updated_by varchar(320)
+);
 
 INSERT INTO proxymaster.api_config
 (id, category, official_website, "name", custom_arts, "method", request_format, base_url, concurrent_limit, data_format, pagination_link_field, csrf_token_variable_name, requires_csrf_token, use_backend_proxy, data_list_field, name_field, name_split_character, image_url_field, language_field, set_field, set_number_field, follow_link_field, follow_link_data_list_field, follow_link_image_field, follow_link_language_field, nested_language_data_list_field, nested_language_image_url_field, nested_language_language_field, ip_address, browser_fingerprint, published, pagination_max_page_field)
